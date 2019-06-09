@@ -57,6 +57,7 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 	}
 	switch ope.HTTPStatusCode {
 	case http.StatusOK:
+		log.Printf("%+v", ope)
 		w.WriteHeader(ope.HTTPStatusCode)
 	default:
 		msg := fmt.Sprintf("datastore export API Response Code is not OK. form=%+v.ope=%+v", form, ope)
