@@ -1,0 +1,12 @@
+steps:
+  - name: 'golang:1.11.5-stretch'
+    entrypoint: 'go'
+    args: ['build', '.']
+    env: ['GO111MODULE=on']
+  - name: 'gcr.io/kaniko-project/executor:v0.9.0'
+    args:
+      - --destination=gcr.io/$PROJECT_ID/gcpug/ds2bq/$BRANCH_NAME:$COMMIT_SHA
+      - --cache=true
+      - --cache-ttl=6h
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: ['beta', 'run', 'deploy', 'ds2bq', '--region', 'us-central1', '--image', 'gcr.io/$PROJECT_ID/gcpug/ds2bq/$BRANCH_NAME:$COMMIT_SHA']
