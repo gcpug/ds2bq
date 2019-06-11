@@ -8,7 +8,8 @@ import (
 )
 
 func main() {
-	http.HandleFunc("/api/v1/datastore-export", HandleDatastoreExportAPI)
+	http.HandleFunc("/api/v1/datastore-export-job-check/", HandleDatastoreExportJobCheckAPI)
+	http.HandleFunc("/api/v1/datastore-export/", HandleDatastoreExportAPI)
 	http.HandleFunc("/", HandleHealthCheck)
 
 	port := os.Getenv("PORT")
