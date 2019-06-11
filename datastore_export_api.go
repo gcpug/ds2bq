@@ -16,6 +16,19 @@ type DatastoreExportRequest struct {
 }
 
 func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
+	queue, err := NewJobStatusCheckQueue(TasksClient)
+	if err != nil {
+		msg := fmt.Sprintf("failed NewJobStatusCheckQueue.err=%+v", err)
+		log.Println(msg)
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusBadRequest)
+		_, err := w.Write([]byte(msg))
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		msg := fmt.Sprintf("failed ioutil.Read(request.Body).err=%+v", err)
@@ -58,6 +71,20 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 	switch ope.HTTPStatusCode {
 	case http.StatusOK:
 		log.Printf("%+v", ope)
+
+		if err := queue.AddTask(r.Context(), &DatastoreExportJobCheckRequest{
+			JobID: ope.Name,
+		}); err != nil {
+			msg := fmt.Sprintf("failed queue.AddTask. jobName=%s.err=%+v", ope.Name, err)
+			log.Println(msg)
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(http.StatusBadRequest)
+			_, err := w.Write([]byte(msg))
+			if err != nil {
+				log.Println(err)
+			}
+			return
+		}
 		w.WriteHeader(ope.HTTPStatusCode)
 	default:
 		msg := fmt.Sprintf("datastore export API Response Code is not OK. form=%+v.ope=%+v", form, ope)
