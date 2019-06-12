@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 
 	"cloud.google.com/go/cloudtasks/apiv2beta3"
@@ -17,21 +18,17 @@ type JobStatusCheckQueue struct {
 	tasks     *cloudtasks.Client
 }
 
-func NewJobStatusCheckQueue(tasks *cloudtasks.Client) (*JobStatusCheckQueue, error) {
+func NewJobStatusCheckQueue(host string, tasks *cloudtasks.Client) (*JobStatusCheckQueue, error) {
+	// TODO Cloud RunのTokyo Regionが来たら、Runと同じProject, Locationにあるという前提にしてしまってもいいかも
 	qn := os.Getenv("JOB_STATUS_CHECK_QUEUE_NAME")
 	if len(qn) < 1 {
 		return nil, errors.New("required JOB_STATUS_CHECK_QUEUE_NAME variable")
 	}
 
-	url := os.Getenv("JOB_STATUS_CHECK_QUEUE_TARGET_URL")
-	if len(url) < 1 {
-		return nil, errors.New("required JOB_STATUS_CHECK_QUEUE_TARGET_URL variable")
-	}
-
 	return &JobStatusCheckQueue{
 		tasks:     tasks,
 		queueName: qn,
-		targetURL: url,
+		targetURL: fmt.Sprintf("https://%s/api/v1/datastore-export-job-check/"),
 	}, nil
 }
 

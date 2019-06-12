@@ -16,7 +16,7 @@ type DatastoreExportRequest struct {
 }
 
 func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
-	queue, err := NewJobStatusCheckQueue(TasksClient)
+	queue, err := NewJobStatusCheckQueue(r.Host, TasksClient)
 	if err != nil {
 		msg := fmt.Sprintf("failed NewJobStatusCheckQueue.err=%+v", err)
 		log.Println(msg)
