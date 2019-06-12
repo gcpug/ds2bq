@@ -11,6 +11,7 @@ import (
 	"github.com/sinmetal/gcpmetadata"
 )
 
+var ServiceAccountEmail string
 var ProjectID string
 var TasksClient *cloudtasks.Client
 
@@ -36,6 +37,13 @@ func init() {
 	}
 	ProjectID = projectID
 	log.Printf("ProjectID is %s\n", projectID)
+
+	sa, err := gcpmetadata.GetServiceAccountEmail()
+	if err != nil {
+		log.Fatalf("failed get ServiceAccountEmail.err=%+v\n", err)
+		os.Exit(1)
+	}
+	ServiceAccountEmail = sa
 
 	{
 		client, err := cloudtasks.NewClient(context.Background())

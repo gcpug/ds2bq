@@ -6,7 +6,7 @@ import (
 	"errors"
 	"os"
 
-	cloudtasks "cloud.google.com/go/cloudtasks/apiv2beta3"
+	"cloud.google.com/go/cloudtasks/apiv2beta3"
 	"github.com/morikuni/failure"
 	taskspb "google.golang.org/genproto/googleapis/cloud/tasks/v2beta3"
 )
@@ -50,7 +50,7 @@ func (q *JobStatusCheckQueue) AddTask(ctx context.Context, body *DatastoreExport
 					Url:        q.targetURL,
 					AuthorizationHeader: &taskspb.HttpRequest_OidcToken{
 						OidcToken: &taskspb.OidcToken{
-							ServiceAccountEmail: ServiceAccountEmail(),
+							ServiceAccountEmail: ServiceAccountEmail,
 						},
 					},
 				},
