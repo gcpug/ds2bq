@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 
 	"cloud.google.com/go/cloudtasks/apiv2beta3"
@@ -25,10 +26,12 @@ func NewJobStatusCheckQueue(host string, tasks *cloudtasks.Client) (*JobStatusCh
 		return nil, errors.New("required JOB_STATUS_CHECK_QUEUE_NAME variable")
 	}
 
+	targetURL := fmt.Sprintf("https://%s/api/v1/datastore-export-job-check/")
+	log.Printf("QueueTargetURL is %s\n", targetURL)
 	return &JobStatusCheckQueue{
 		tasks:     tasks,
 		queueName: qn,
-		targetURL: fmt.Sprintf("https://%s/api/v1/datastore-export-job-check/"),
+		targetURL: targetURL,
 	}, nil
 }
 
