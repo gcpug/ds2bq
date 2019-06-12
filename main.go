@@ -18,7 +18,6 @@ var TasksClient *cloudtasks.Client
 func main() {
 	http.HandleFunc("/api/v1/datastore-export-job-check/", HandleDatastoreExportJobCheckAPI)
 	http.HandleFunc("/api/v1/datastore-export/", HandleDatastoreExportAPI)
-	http.HandleFunc("/runenv/", HandleRunEnvAPI)
 	http.HandleFunc("/", HandleHealthCheck)
 
 	port := os.Getenv("PORT")
