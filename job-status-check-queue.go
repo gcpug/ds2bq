@@ -26,7 +26,7 @@ func NewJobStatusCheckQueue(host string, tasks *cloudtasks.Client) (*JobStatusCh
 		return nil, errors.New("required JOB_STATUS_CHECK_QUEUE_NAME variable")
 	}
 
-	targetURL := fmt.Sprintf("https://%s/api/v1/datastore-export-job-check/")
+	targetURL := fmt.Sprintf("https://%s/api/v1/datastore-export-job-check/", host)
 	log.Printf("QueueTargetURL is %s\n", targetURL)
 	return &JobStatusCheckQueue{
 		tasks:     tasks,
