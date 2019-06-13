@@ -38,3 +38,43 @@ func Export(ctx context.Context, projectID string, outputGCSPrefix string, entit
 	}
 	return ope, nil
 }
+
+// JobStatus is Datastore Export Jobの状態
+type JobStatus int
+
+const (
+	Running JobStatus = iota
+	Fail
+	Done
+)
+
+// JobStatusResponse is Datastore Export Jobの状態の取得結果を表すstruct
+type JobStatusResponse struct {
+	Status     JobStatus
+	ErrCode    int64
+	ErrMessage string
+}
+
+// CheckJobStatus is Datastore Export Jobの状態を取得する
+func CheckJobStatus(ctx context.Context, jobID string) (*JobStatusResponse, error) {
+	service, err := datastore.NewService(ctx)
+	if err != nil {
+		return nil, failure.Wrap(err, failure.Message("failed datastore.New()."))
+	}
+
+	ope, err := service.Projects.Operations.Get(jobID).Do()
+	if err != nil {
+		return nil, failure.Wrap(err, failure.Message("failed Operations.Get()."))
+	}
+
+	if err != nil {
+		return nil, failure.Wrap(err, failure.Message("failed Datastore Export API."))
+	}
+	if ope.Done == false {
+		return &JobStatusResponse{Running, 0, ""}, nil
+	}
+	if ope.Error != nil {
+		return &JobStatusResponse{Fail, ope.Error.Code, ope.Error.Message}, nil
+	}
+	return &JobStatusResponse{Done, 0, ""}, nil
+}
