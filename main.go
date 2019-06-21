@@ -23,6 +23,7 @@ var DatastoreClient datastore.Client
 func main() {
 	http.HandleFunc("/api/v1/datastore-export-job-check/", HandleDatastoreExportJobCheckAPI)
 	http.HandleFunc("/api/v1/datastore-export/", HandleDatastoreExportAPI)
+	http.HandleFunc("/api/v1/storage-change-notify/", HandleStorageChangeNotifyAPI)
 	http.HandleFunc("/", HandleHealthCheck)
 
 	port := os.Getenv("PORT")
