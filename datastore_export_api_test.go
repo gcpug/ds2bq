@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/gcpug/ds2bq/datastore"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
+
+	"github.com/gcpug/ds2bq/datastore"
 )
 
 func TestHandleDatastoreExportAPI(t *testing.T) {
@@ -21,6 +22,7 @@ func TestHandleDatastoreExportAPI(t *testing.T) {
 	form := DatastoreExportRequest{
 		ProjectID:         "gcpugjp-dev",
 		OutputGCSFilePath: "gs://datastore-backup-gcpugjp-dev",
+		AllKinds:          true,
 	}
 	b, err := json.Marshal(form)
 	if err != nil {
@@ -85,6 +87,44 @@ func TestBuildEntityFilter(t *testing.T) {
 			}
 			if reflect.DeepEqual(tt.want.NamespaceIds, got.NamespaceIds) == false {
 				t.Errorf("want NamespaceIds %v but got %v", tt.want.NamespaceIds, got.NamespaceIds)
+			}
+		})
+	}
+}
+
+func TestBuildBQLoadKinds(t *testing.T) {
+	cases := []struct {
+		name        string
+		ef          *datastore.EntityFilter
+		ignoreKinds []string
+		want        []string
+	}{
+		{"ignore empty", &datastore.EntityFilter{
+			Kinds: []string{"Hoge", "Fuga"},
+		},
+			[]string{},
+			[]string{"Hoge", "Fuga"},
+		},
+		{"exits ignore", &datastore.EntityFilter{
+			Kinds: []string{"Hoge", "Fuga"},
+		},
+			[]string{"Hoge"},
+			[]string{"Fuga"},
+		},
+		{"exits ignore", &datastore.EntityFilter{
+			Kinds: []string{"Hoge", "Fuga", "Duga"},
+		},
+			[]string{"Hoge", "Fuga", "Moge"},
+			[]string{"Duga"},
+		},
+	}
+
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			got := BuildBQLoadKinds(tt.ef, tt.ignoreKinds)
+			if reflect.DeepEqual(tt.want, got) == false {
+				t.Errorf("want Kinds %v but got %v", tt.want, got)
 			}
 		})
 	}

@@ -75,6 +75,32 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
+	bqLoadKinds := BuildBQLoadKinds(ef, form.IgnoreBQLoadKinds)
+	jobStore, err := NewBQLoadJobStore(r.Context(), DatastoreClient)
+	if err != nil {
+		msg := fmt.Sprintf("failed NewBQLoadJobStore() form=%+v.err=%+v", form, err)
+		log.Println(msg)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err := w.Write([]byte(msg))
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+	jobID := jobStore.NewJobID(r.Context())
+	_, err = jobStore.PutMulti(r.Context(), jobID, bqLoadKinds)
+	if err != nil {
+		msg := fmt.Sprintf("failed BQLoadJobStore.PutMulti() jobID=%v,bqLoadKinds=%+v.err=%+v", jobID, bqLoadKinds, err)
+		log.Println(msg)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err := w.Write([]byte(msg))
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+
 	ope, err := datastore.Export(r.Context(), form.ProjectID, form.OutputGCSFilePath, ef)
 	if err != nil {
 		msg := fmt.Sprintf("failed datastore.Export() form=%+v.err=%+v", form, err)
@@ -147,4 +173,22 @@ func BuildEntityFilter(ctx context.Context, form *DatastoreExportRequest) (*data
 		Kinds:        kinds,
 		NamespaceIds: ns,
 	}, nil
+}
+
+func BuildBQLoadKinds(ef *datastore.EntityFilter, ignoreKinds []string) []string {
+	ignore := map[string]bool{}
+	if len(ignoreKinds) > 0 {
+		for _, v := range ignoreKinds {
+			ignore[v] = true
+		}
+	}
+	var kinds []string
+	for _, kind := range ef.Kinds {
+		if ignore[kind] {
+			continue
+		}
+		kinds = append(kinds, kind)
+	}
+
+	return kinds
 }
