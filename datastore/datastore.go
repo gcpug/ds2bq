@@ -2,9 +2,12 @@ package datastore
 
 import (
 	"context"
+	"strings"
 
+	cds "cloud.google.com/go/datastore"
 	"github.com/morikuni/failure"
 	"google.golang.org/api/datastore/v1"
+	"google.golang.org/api/iterator"
 )
 
 // https://cloud.google.com/datastore/docs/export-import-entities
@@ -77,4 +80,35 @@ func CheckJobStatus(ctx context.Context, jobID string) (*JobStatusResponse, erro
 		return &JobStatusResponse{Fail, ope.Error.Code, ope.Error.Message}, nil
 	}
 	return &JobStatusResponse{Done, 0, ""}, nil
+}
+
+// GetAllKinds is Kind名一覧を返す
+// ただし、 _ で始まるものは無視する
+func GetAllKinds(ctx context.Context, projectID string) (kinds []string, rerr error) {
+	client, err := cds.NewClient(ctx, projectID)
+	if err != nil {
+		return nil, failure.Wrap(err, failure.Messagef("failed Datastore.NewClient. projectID=%s", projectID))
+	}
+	defer func() {
+		if err := client.Close(); err != nil {
+			rerr = failure.Wrap(err, failure.Messagef("failed Datastore.Client.Close. projectID=%s", projectID))
+		}
+	}()
+
+	q := cds.NewQuery("__kind__").KeysOnly()
+	t := client.Run(ctx, q)
+	for {
+		key, err := t.Next(nil)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if strings.HasPrefix(key.Name, "_") {
+			continue
+		}
+		kinds = append(kinds, key.Name)
+	}
+	return kinds, nil
 }
