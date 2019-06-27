@@ -37,4 +37,7 @@ func HandleStorageChangeNotifyAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("%+v", p)
+
+	kind, ok := SearchKindName(p.Message.GCSObject.Name)
+	log.Printf("__SEARCH_KIND_NAME__ %v : %v : %v\n", kind, ok, p.Message.GCSObject.Name)
 }

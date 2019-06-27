@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"strings"
 	"time"
 )
 
@@ -85,4 +86,23 @@ func EncodePayload(payload []byte) (*PubSubStorageNotifyPayload, error) {
 			GCSObject:   o,
 		},
 	}, nil
+}
+
+func IsDatastoreExportMetadataFile(objectID string) bool {
+	return strings.HasSuffix(objectID, ".export_metadata")
+}
+
+func SearchKindName(objectID string) (string, bool) {
+	if IsDatastoreExportMetadataFile(objectID) == false {
+		return "", false
+	}
+
+	const prefix = "/all_namespaces_kind_"
+	const suffix = ".export_metadata"
+
+	index := strings.Index(objectID, "/all_namespaces_kind_")
+	v := objectID[index:len(objectID)]
+
+	v = strings.TrimPrefix(v, prefix)
+	return strings.TrimSuffix(v, suffix), true
 }

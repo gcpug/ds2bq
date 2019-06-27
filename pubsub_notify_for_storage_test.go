@@ -92,3 +92,72 @@ func TestEncodePayload(t *testing.T) {
 		t.Error("Message.GCSObject.Updated is zero")
 	}
 }
+
+func TestIsDatastoreExportMetadataFile(t *testing.T) {
+	cases := []struct {
+		name     string
+		objectID string
+		want     bool
+	}{
+		{"empty",
+			"",
+			false,
+		},
+		{"not export metadata file",
+			"2019-06-27T04:53:23_95496/all_namespaces/kind_DatastoreSample/output-3",
+			false,
+		},
+		{"export metadata file",
+			"2019-06-27T10:24:38_6984/all_namespaces/kind_BQLoadJob/all_namespaces_kind_BQLoadJob.export_metadata",
+			true,
+		},
+	}
+
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsDatastoreExportMetadataFile(tt.objectID)
+			if got != tt.want {
+				t.Errorf("want %v but got %v", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestSearchKindName(t *testing.T) {
+	cases := []struct {
+		name     string
+		objectID string
+		wantOK   bool
+		wantName string
+	}{
+		{"empty",
+			"",
+			false,
+			"",
+		},
+		{"not export metadata file",
+			"2019-06-27T04:53:23_95496/all_namespaces/kind_DatastoreSample/output-3",
+			false,
+			"",
+		},
+		{"export metadata file",
+			"2019-06-27T10:24:38_6984/all_namespaces/kind_BQLoadJob/all_namespaces_kind_BQLoadJob.export_metadata",
+			true,
+			"BQLoadJob",
+		},
+	}
+
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			kind, ok := SearchKindName(tt.objectID)
+			if ok != tt.wantOK {
+				t.Errorf("want OK %v but got %v", tt.wantOK, ok)
+			}
+			if kind != tt.wantName {
+				t.Errorf("want Kind %v but got %v", tt.wantName, kind)
+			}
+		})
+	}
+}
