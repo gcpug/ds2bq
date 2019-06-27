@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -24,9 +23,9 @@ func HandleStorageChangeNotifyAPI(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("BASE64 BODY:%s\n", string(b))
 
-	dst, err := base64.StdEncoding.DecodeString(string(b))
+	p, err := EncodePayload(b)
 	if err != nil {
-		msg := fmt.Sprintf("failed base64.StdEncoding.Decode.err=%+v", err)
+		msg := fmt.Sprintf("failed EncodePayload.err=%+v, body=%v", err, string(b))
 		log.Println(msg)
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusBadRequest)
@@ -37,5 +36,5 @@ func HandleStorageChangeNotifyAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("JSON BODY:%s\n", string(dst))
+	log.Printf("%+v", p)
 }
