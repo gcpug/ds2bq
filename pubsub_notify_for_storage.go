@@ -88,6 +88,15 @@ func EncodePayload(payload []byte) (*PubSubStorageNotifyPayload, error) {
 	}, nil
 }
 
+func EncodePayloadPull(payload []byte) (*GCSObject, error) {
+	var raw GCSObject
+	if err := json.Unmarshal(payload, &raw); err != nil {
+		return nil, err
+	}
+
+	return &raw, nil
+}
+
 func IsDatastoreExportMetadataFile(objectID string) bool {
 	return strings.HasSuffix(objectID, ".export_metadata")
 }
@@ -97,12 +106,18 @@ func SearchKindName(objectID string) (string, bool) {
 		return "", false
 	}
 
-	const prefix = "/all_namespaces_kind_"
+	prefixs := []string{"/default_namespace_kind_", "/all_namespaces_kind_"}
 	const suffix = ".export_metadata"
+	for _, prefix := range prefixs {
+		index := strings.Index(objectID, prefix)
+		if index < 0 {
+			continue
+		}
+		v := objectID[index:len(objectID)]
 
-	index := strings.Index(objectID, "/all_namespaces_kind_")
-	v := objectID[index:len(objectID)]
+		v = strings.TrimPrefix(v, prefix)
+		return strings.TrimSuffix(v, suffix), true
+	}
 
-	v = strings.TrimPrefix(v, prefix)
-	return strings.TrimSuffix(v, suffix), true
+	return "", false
 }

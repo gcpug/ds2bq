@@ -16,7 +16,7 @@ func TestHandleDatastoreExportJobCheckAPI(t *testing.T) {
 	defer server.Close()
 
 	form := DatastoreExportJobCheckRequest{
-		JobID: "projects/gcpugjp-dev/operations/ASAxODAwMjIwODIJGnRsdWFmZWQHEjF0c2FlaHRyb24tYWlzYS1zYm9qLW5pbWRhGgoyEg",
+		DatastoreExportJobID: "projects/gcpugjp-dev/operations/ASAxODAwMjIwODIJGnRsdWFmZWQHEjF0c2FlaHRyb24tYWlzYS1zYm9qLW5pbWRhGgoyEg",
 	}
 	b, err := json.Marshal(form)
 	if err != nil {

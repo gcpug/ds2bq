@@ -117,7 +117,7 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%+v", ope)
 
 		if err := queue.AddTask(r.Context(), &DatastoreExportJobCheckRequest{
-			JobID: ope.Name,
+			DatastoreExportJobID: ope.Name,
 		}); err != nil {
 			msg := fmt.Sprintf("failed queue.AddTask. jobName=%s.err=%+v", ope.Name, err)
 			log.Println(msg)

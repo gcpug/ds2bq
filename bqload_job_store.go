@@ -133,15 +133,20 @@ func (store *BQLoadJobStore) Get(ctx context.Context, jobID string, kind string)
 }
 
 func (store *BQLoadJobStore) Update(ctx context.Context, jobID string, kind string, status BQLoadJobStatus) (*BQLoadJob, error) {
+	key := store.NewKey(ctx, jobID, kind)
 	var e BQLoadJob
 	_, err := store.ds.RunInTransaction(ctx, func(tx datastore.Transaction) error {
-		if err := tx.Get(store.NewKey(ctx, jobID, kind), &e); err != nil {
+		if err := tx.Get(key, &e); err != nil {
 			return err
 		}
 
 		e.Status = status
 		e.ChangeStatusAt = time.Now()
 
+		_, err := tx.Put(key, &e)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
