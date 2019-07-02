@@ -70,6 +70,9 @@ func HandleDatastoreExportJobCheckAPI(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	case datastore.Done:
 		log.Printf("%s is Done...\n", form.DatastoreExportJobID)
+		if err := ReceiveStorageChangeNotify(r.Context(), form.DS2BQJobID); err != nil {
+			log.Printf("failed ReceiveStorageChangeNotify. err=%v\n", err)
+		}
 		w.WriteHeader(http.StatusOK)
 	default:
 		log.Printf("%v is Unsupported Status\n", res.Status)
