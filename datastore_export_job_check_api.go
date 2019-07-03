@@ -104,6 +104,7 @@ func ReceiveStorageChangeNotify(ctx context.Context, ds2bqJobID string) error {
 		if err := ls.ReceiveStorageChangeNotify(cctx, ds2bqJobID); err != nil {
 			errch <- err
 		}
+		log.Print("finish ! ReceiveStorageChangeNotify\n")
 	}()
 
 	t := time.NewTicker(time.Second * 60)
@@ -122,7 +123,7 @@ func ReceiveStorageChangeNotify(ctx context.Context, ds2bqJobID string) error {
 					allDone = false
 				}
 			}
-			log.Printf("BQLoadJobStatusChech. %v\n", allDone)
+			log.Printf("BQLoadJobStatusCheck. allDone=%v\n", allDone)
 			if allDone {
 				cctx.Done()
 				cancel()
