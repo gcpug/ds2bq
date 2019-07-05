@@ -14,7 +14,7 @@ import (
 )
 
 func TestHandleDatastoreExportAPI(t *testing.T) {
-	// t.SkipNow() // 実際にDatastore APIを実行するので、普段はSkipする
+	t.SkipNow() // 実際にDatastore APIを実行するので、普段はSkipする
 
 	ctx := context.Background()
 	store, err := NewBQLoadJobStore(ctx, DatastoreClient)
