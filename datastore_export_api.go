@@ -20,6 +20,13 @@ type DatastoreExportRequest struct {
 	IgnoreKinds       []string `json:"ignoreKinds"`
 	IgnoreBQLoadKinds []string `json:"ignoreBQLoadKinds"`
 	OutputGCSFilePath string   `json:"outputGCSFilePath"`
+	BQLoadProjectID   string   `json:"bqLoadProjectId"`
+	BQLoadDatasetID   string   `json:"bqLoadDatasetId"`
+}
+
+type DatastoreExportResponse struct {
+	DS2BQJobID           string `json:"ds2bqJobId"`
+	DatastoreExportJobID string `json:"datastoreExportJobId"`
 }
 
 func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +96,7 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jobID := jobStore.NewJobID(r.Context())
-	_, err = jobStore.PutMulti(r.Context(), jobID, bqLoadKinds)
+	_, err = jobStore.PutMulti(r.Context(), BuildBQLoadJobPutMultiForm(jobID, bqLoadKinds, form))
 	if err != nil {
 		msg := fmt.Sprintf("failed BQLoadJobStore.PutMulti() jobID=%v,bqLoadKinds=%+v.err=%+v", jobID, bqLoadKinds, err)
 		log.Println(msg)
@@ -130,7 +137,15 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(ope.HTTPStatusCode)
+		res := DatastoreExportResponse{
+			DS2BQJobID:           jobID,
+			DatastoreExportJobID: ope.Name,
+		}
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			log.Printf("failed write response. %+v, err=%v", res, err)
+		}
 	default:
 		msg := fmt.Sprintf("datastore export API Response Code is not OK. form=%+v.ope=%+v", form, ope)
 		log.Println(msg)
@@ -192,4 +207,21 @@ func BuildBQLoadKinds(ef *datastore.EntityFilter, ignoreKinds []string) []string
 	}
 
 	return kinds
+}
+
+func BuildBQLoadJobPutMultiForm(jobID string, kinds []string, form *DatastoreExportRequest) *BQLoadJobPutMultiForm {
+	result := BQLoadJobPutMultiForm{
+		JobID:           jobID,
+		Kinds:           kinds,
+		BQLoadProjectID: form.BQLoadProjectID,
+		BQLoadDatasetID: form.BQLoadDatasetID,
+	}
+
+	if result.BQLoadProjectID == "" {
+		result.BQLoadProjectID = ProjectID
+	}
+	if result.BQLoadDatasetID == "" {
+		result.BQLoadDatasetID = "datastore"
+	}
+	return &result
 }

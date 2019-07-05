@@ -17,7 +17,10 @@ func TestBQLoadService_InsertBigQueryLoadJob(t *testing.T) {
 		t.Fatal(err)
 	}
 	jobID := "hoge"
-	_, err = store.Put(ctx, jobID, "PugEvent")
+	_, err = store.Put(ctx, &BQLoadJobPutForm{
+		JobID: jobID,
+		Kind:  "PugEvent",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

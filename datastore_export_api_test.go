@@ -10,30 +10,79 @@ import (
 	"testing"
 
 	"github.com/gcpug/ds2bq/datastore"
+	mds "go.mercari.io/datastore"
 )
 
 func TestHandleDatastoreExportAPI(t *testing.T) {
-	t.SkipNow() // 実際にDatastore APIを実行するので、普段はSkipする
+	// t.SkipNow() // 実際にDatastore APIを実行するので、普段はSkipする
+
+	ctx := context.Background()
+	store, err := NewBQLoadJobStore(ctx, DatastoreClient)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	hf := http.HandlerFunc(HandleDatastoreExportAPI)
 	server := httptest.NewServer(hf)
 	defer server.Close()
 
-	form := DatastoreExportRequest{
-		ProjectID:         "gcpugjp-dev",
-		OutputGCSFilePath: "gs://datastore-backup-gcpugjp-dev",
-		AllKinds:          true,
+	cases := []struct {
+		name                string
+		form                DatastoreExportRequest
+		wantBQLoadProjectID string
+		wantBQLoadDatasetID string
+	}{
+		{"default value",
+			DatastoreExportRequest{
+				ProjectID:         "gcpugjp-dev",
+				OutputGCSFilePath: "gs://datastore-backup-gcpugjp-dev",
+				Kinds:             []string{"PugEvent"},
+			}, "gcpugjp-dev", "datastore"},
+		{"explicit value",
+			DatastoreExportRequest{
+				ProjectID:         "gcpugjp-dev",
+				OutputGCSFilePath: "gs://datastore-backup-gcpugjp-dev",
+				Kinds:             []string{"PugEvent"},
+				BQLoadProjectID:   "gcpugjp",
+				BQLoadDatasetID:   "ds2bqtest",
+			}, "gcpugjp", "ds2bqtest"},
 	}
-	b, err := json.Marshal(form)
-	if err != nil {
-		t.Fatal(err)
-	}
-	resp, err := http.Post(server.URL, "application/json; charset=utf8", bytes.NewReader(b))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if e, g := http.StatusOK, resp.StatusCode; e != g {
-		t.Errorf("StatusCode expected %v; got %v", e, g)
+
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			b, err := json.Marshal(tt.form)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp, err := http.Post(server.URL, "application/json; charset=utf8", bytes.NewReader(b))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if e, g := http.StatusOK, resp.StatusCode; e != g {
+				t.Errorf("StatusCode expected %v; got %v", e, g)
+			}
+			var respBody DatastoreExportResponse
+			if err := json.NewDecoder(resp.Body).Decode(&respBody); err != nil {
+				t.Fatal(err)
+			}
+			job, err := store.Get(ctx, respBody.DS2BQJobID, "PugEvent")
+			if err != nil {
+				if err == mds.ErrNoSuchEntity {
+					t.Errorf("BQLoadJobStore ErrNoSuchEntity JobID=%s,Kind=%s", respBody.DS2BQJobID, "PugEvent")
+					return
+				}
+				t.Fatal(err)
+			}
+			if e, g := tt.wantBQLoadProjectID, job.BQLoadProjectID; e != g {
+				t.Errorf("want BQLoadProjectID %s but got %s", e, g)
+			}
+			if e, g := tt.wantBQLoadDatasetID, job.BQLoadDatasetID; e != g {
+				t.Errorf("want BQLoadDatasetID %s but got %s", e, g)
+			}
+		})
 	}
 }
 
