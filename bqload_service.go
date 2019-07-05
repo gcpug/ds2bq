@@ -56,7 +56,7 @@ func (s *BQLoadService) ReceiveStorageChangeNotify(ctx context.Context, jobID st
 			return
 		}
 
-		_, err = s.bqLoadJobStore.Get(ctx, jobID, kind)
+		lj, err := s.bqLoadJobStore.Get(ctx, jobID, kind)
 		if err != nil {
 			if err == datastore.ErrNoSuchEntity {
 				// BQ Load対象外はAckを返して終了
@@ -66,8 +66,7 @@ func (s *BQLoadService) ReceiveStorageChangeNotify(ctx context.Context, jobID st
 			}
 		}
 
-		// TODO ここのProjectIDはBQLoadJobから取る
-		_, err = bigquery.Load(ctx, ProjectID, fmt.Sprintf("gs://%s/%s", gcsObject.Bucket, gcsObject.Name), "datastore", kind)
+		_, err = bigquery.Load(ctx, lj.BQLoadProjectID, fmt.Sprintf("gs://%s/%s", gcsObject.Bucket, gcsObject.Name), lj.BQLoadDatasetID, kind)
 		if err != nil {
 			log.Printf("failed bigquery.Load() message.ID=%v,GCSObjectID=%v,err=%v\n", message.ID, gcsObject.Name, err)
 			message.Nack()

@@ -42,7 +42,13 @@ func TestBQLoadJobStore_Put(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = s.Put(ctx, "helloJob", "SampleKind")
+	form := &BQLoadJobPutForm{
+		JobID:           "helloJob",
+		Kind:            "SampleKind",
+		BQLoadProjectID: "hoge",
+		BQLoadDatasetID: "fuga",
+	}
+	_, err = s.Put(ctx, form)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +71,14 @@ func TestBQLoadJobStore_PutMulti(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		kinds = append(kinds, fmt.Sprintf("SampleKind%d", i))
 	}
-	_, err = s.PutMulti(ctx, "helloJob", kinds)
+
+	form := &BQLoadJobPutMultiForm{
+		JobID:           "helloJob",
+		Kinds:           kinds,
+		BQLoadProjectID: "hoge",
+		BQLoadDatasetID: "fuga",
+	}
+	_, err = s.PutMulti(ctx, form)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +99,13 @@ func TestBQLoadJobStore_Get(t *testing.T) {
 
 	const jobID = "helloJob"
 	const kind = "SampleKind"
-	_, err = s.Put(ctx, jobID, kind)
+	form := &BQLoadJobPutForm{
+		JobID:           jobID,
+		Kind:            kind,
+		BQLoadProjectID: "hoge",
+		BQLoadDatasetID: "fuga",
+	}
+	_, err = s.Put(ctx, form)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +175,13 @@ func TestBQLoadJobStore_Update(t *testing.T) {
 
 	const jobID = "helloJob"
 	const kind = "SampleKind"
-	_, err = s.Put(ctx, jobID, kind)
+	form := &BQLoadJobPutForm{
+		JobID:           jobID,
+		Kind:            kind,
+		BQLoadProjectID: "hoge",
+		BQLoadDatasetID: "fuga",
+	}
+	_, err = s.Put(ctx, form)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,11 +251,19 @@ func TestBQLoadJobStore_List(t *testing.T) {
 
 	const jobID = "helloJob"
 	const kind = "SampleKind"
+	var kinds []string
 	for i := 0; i < 10; i++ {
-		_, err = s.Put(ctx, jobID, fmt.Sprintf("%s%d", kind, i))
-		if err != nil {
-			t.Fatal(err)
-		}
+		kinds = append(kinds, fmt.Sprintf("%s%d", kind, i))
+	}
+	form := &BQLoadJobPutMultiForm{
+		JobID:           jobID,
+		Kinds:           kinds,
+		BQLoadProjectID: "hoge",
+		BQLoadDatasetID: "fuga",
+	}
+	_, err = s.PutMulti(ctx, form)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	cases := []struct {

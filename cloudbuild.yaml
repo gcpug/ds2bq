@@ -9,4 +9,4 @@ steps:
       - --cache=true
       - --cache-ttl=6h
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['beta', 'run', 'deploy', 'ds2bq', '--region', 'us-central1', '--image', 'gcr.io/$PROJECT_ID/gcpug/ds2bq/$BRANCH_NAME:$COMMIT_SHA']
+    args: ['beta', 'run', 'deploy', 'gcpug-ds2bq', '--region', 'us-central1', '--image', 'gcr.io/$PROJECT_ID/gcpug/ds2bq/$BRANCH_NAME:$COMMIT_SHA']
