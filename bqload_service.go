@@ -66,20 +66,20 @@ func (s *BQLoadService) ReceiveStorageChangeNotify(ctx context.Context, jobID st
 			}
 		}
 
-		_, err = bigquery.Load(ctx, lj.BQLoadProjectID, fmt.Sprintf("gs://%s/%s", gcsObject.Bucket, gcsObject.Name), lj.BQLoadDatasetID, kind)
+		bqLoadJobId, err := bigquery.Load(ctx, lj.BQLoadProjectID, fmt.Sprintf("gs://%s/%s", gcsObject.Bucket, gcsObject.Name), lj.BQLoadDatasetID, kind)
 		if err != nil {
 			log.Printf("failed bigquery.Load() message.ID=%v,GCSObjectID=%v,err=%v\n", message.ID, gcsObject.Name, err)
 			message.Nack()
 			return
 		}
+		fmt.Printf("bq insert job. ds2bqJobID=%v,kind=%v,gcs=%v,bqLoadJobID=%v\n", jobID, kind, gcsObject.Name, bqLoadJobId)
 
-		job, err := s.bqLoadJobStore.Update(ctx, jobID, kind, BQLoadJobStatusDone)
+		_, err = s.bqLoadJobStore.Update(ctx, jobID, kind, BQLoadJobStatusDone)
 		if err != nil {
 			log.Printf("failed BQLoadJobStore.Update() message.ID=%v,GCSObjectID=%v,err=%v\n", message.ID, gcsObject.Name, err)
 			message.Nack()
 			return
 		}
-		fmt.Printf("Update BQLoadJob kind=%v,status=%v\n", job.Kind, job.Status)
 
 		// TODO BQLoad Job Status Check QueueにAddする
 		message.Ack()
