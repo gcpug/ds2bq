@@ -14,6 +14,7 @@ import (
 	"github.com/gcpug/ds2bq/datastore"
 	"github.com/morikuni/failure"
 	"github.com/sinmetal/silverdog/dogtime"
+	slog "github.com/sinmetal/slog/v2"
 )
 
 var ErrTimeout failure.StringCode = "Timeout"
@@ -24,6 +25,9 @@ type DatastoreExportJobCheckRequest struct {
 }
 
 func HandleDatastoreExportJobCheckAPI(w http.ResponseWriter, r *http.Request) {
+	ctx := slog.WithValue(r.Context())
+	defer slog.Flush(ctx)
+
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		msg := fmt.Sprintf("failed ioutil.Read(request.Body).err=%+v", err)
@@ -66,19 +70,19 @@ func HandleDatastoreExportJobCheckAPI(w http.ResponseWriter, r *http.Request) {
 	}
 	switch res.Status {
 	case datastore.Running:
-		log.Printf("%s is Running...\n", form.DatastoreExportJobID)
+		slog.Info(ctx, slog.KV{"MSG", fmt.Sprintf("%s is Running...\n", form.DatastoreExportJobID)})
 		w.WriteHeader(http.StatusConflict)
 	case datastore.Fail:
-		log.Printf("%s is Fail. ErrCode=%v,ErrMessage=%v\n", form.DatastoreExportJobID, res.ErrCode, res.ErrMessage)
+		slog.Info(ctx, slog.KV{"MSG", fmt.Sprintf("%s is Fail. ErrCode=%v,ErrMessage=%v\n", form.DatastoreExportJobID, res.ErrCode, res.ErrMessage)})
 		w.WriteHeader(http.StatusOK)
 	case datastore.Done:
-		log.Printf("%s is Done...\n", form.DatastoreExportJobID)
-		if err := ReceiveStorageChangeNotify(r.Context(), form.DS2BQJobID); err != nil {
-			log.Printf("failed ReceiveStorageChangeNotify. err=%v\n", err)
+		slog.Info(ctx, slog.KV{"MSG", fmt.Sprintf("%s is Done...\n", form.DatastoreExportJobID)})
+		if err := ReceiveStorageChangeNotify(ctx, form.DS2BQJobID); err != nil {
+			slog.Info(ctx, slog.KV{"MSG", fmt.Sprintf("failed ReceiveStorageChangeNotify. err=%v\n", err)})
 		}
 		w.WriteHeader(http.StatusOK)
 	default:
-		log.Printf("%v is Unsupported Status\n", res.Status)
+		slog.Info(ctx, slog.KV{"MSG", fmt.Sprintf("%v is Unsupported Status\n", res.Status)})
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
@@ -105,10 +109,10 @@ func ReceiveStorageChangeNotify(ctx context.Context, ds2bqJobID string) error {
 	errch := make(chan error, 1)
 	go func() {
 		if err := ls.ReceiveStorageChangeNotify(cctx, ds2bqJobID); err != nil {
-			log.Printf("failed ReceiveStorageChangeNotify. jobID=%s\n", ds2bqJobID)
+			slog.Info(ctx, slog.KV{"MSG", fmt.Sprintf("failed ReceiveStorageChangeNotify. jobID=%s\n", ds2bqJobID)})
 			errch <- err
 		}
-		log.Printf("finish! ReceiveStorageChangeNotify. jobID=%s\n", ds2bqJobID)
+		slog.Info(ctx, slog.KV{"MSG", fmt.Sprintf("finish! ReceiveStorageChangeNotify. jobID=%s\n", ds2bqJobID)})
 	}()
 
 	return WaitBQLoadJobStatusChecker(cctx, 60*time.Second, bljs, ds2bqJobID, errch)
@@ -144,7 +148,7 @@ func IsBQLoadJobStatusAllDone(ctx context.Context, bljs *BQLoadJobStore, ds2bqJo
 	}
 	allDone := true
 	for _, job := range jobs {
-		log.Printf("BQLoadJobStatusCheck. jobID=%v,kind=%v,status=%v\n", job.JobID, job.Kind, job.Status)
+		slog.Info(ctx, slog.KV{"MSG", fmt.Sprintf("BQLoadJobStatusCheck. jobID=%v,kind=%v,status=%v\n", job.JobID, job.Kind, job.Status)})
 		if job.Status != BQLoadJobStatusDone {
 			allDone = false
 		}

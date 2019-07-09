@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/morikuni/failure"
-	"github.com/sinmetal/silverdog/dogtime"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/morikuni/failure"
+	"github.com/sinmetal/silverdog/dogtime"
 )
 
 func TestHandleDatastoreExportJobCheckAPI(t *testing.T) {

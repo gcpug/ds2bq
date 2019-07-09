@@ -103,6 +103,10 @@ github.com/sinmetal/gcpmetadata v0.0.0-20190612100641-8951dfda8549 h1:ei53S97TEe
 github.com/sinmetal/gcpmetadata v0.0.0-20190612100641-8951dfda8549/go.mod h1:ct28oEQbWXPCAoVGGyFNoMr7rk+mIyeGcHJqR1Ax7cI=
 github.com/sinmetal/silverdog v0.0.0-20190703104659-dfc123220739 h1:seJjztyt97UXFz99mb71Gwdrhr6Zcd9kkelljQOFWbk=
 github.com/sinmetal/silverdog v0.0.0-20190703104659-dfc123220739/go.mod h1:dI62sSZ829OY67VatpXl2qj++RguayZd6zwHUVtrj9o=
+github.com/sinmetal/silverdog v0.0.0-20190709122325-a885443c3d17 h1:tZVZfKSIV4Fsobho6vWbe8ZSVSuB2uztAZMGbPu/Go8=
+github.com/sinmetal/silverdog v0.0.0-20190709122325-a885443c3d17/go.mod h1:dI62sSZ829OY67VatpXl2qj++RguayZd6zwHUVtrj9o=
+github.com/sinmetal/slog v0.0.0-20190709124601-586365e285f5 h1:Ju3rtu9u9HpvF37x/viMqQAUkLCanVLdVMtUj5ex1cw=
+github.com/sinmetal/slog v0.0.0-20190709124601-586365e285f5/go.mod h1:7abRLuXyxKUl/2wBVCkDmFPU8bI4nRVIoZDqOPv5W4o=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
