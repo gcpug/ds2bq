@@ -39,8 +39,6 @@ func (s *BQLoadService) InsertBigQueryLoadJob(ctx context.Context, jobID string)
 
 func (s *BQLoadService) ReceiveStorageChangeNotify(ctx context.Context, jobID string) error {
 	return s.pubsub.Subscription(s.storageChangeNotifySubscription).Receive(ctx, func(ctx context.Context, message *pubsub.Message) {
-		//fmt.Printf("Attributes=%+v\n", message.Attributes)
-		//log.Printf("Data=%s\n", message.Data)
 		gcsObject, err := EncodePayloadPull(message.Data)
 		if err != nil {
 			log.Printf("failed EncodePayload MessageID=%v,err=%v\n", message.ID, err)
@@ -81,7 +79,6 @@ func (s *BQLoadService) ReceiveStorageChangeNotify(ctx context.Context, jobID st
 			return
 		}
 
-		// TODO BQLoad Job Status Check QueueにAddする
 		message.Ack()
 	})
 }
