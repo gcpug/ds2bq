@@ -49,7 +49,7 @@ func (s *BQLoadService) ReceiveStorageChangeNotify(ctx context.Context, jobID st
 		fmt.Printf("running %s\n", gcsObject.Name)
 		kind, ok := SearchKindName(gcsObject.Name)
 		if !ok {
-			log.Printf("%s is SearchKindName not hit.", gcsObject.Name)
+			log.Printf("%s is SearchKindName not hit. MessageID=%v\n", gcsObject.Name, message.ID)
 			message.Ack()
 			return
 		}
@@ -58,7 +58,7 @@ func (s *BQLoadService) ReceiveStorageChangeNotify(ctx context.Context, jobID st
 		if err != nil {
 			if err == datastore.ErrNoSuchEntity {
 				// BQ Load対象外はAckを返して終了
-				log.Printf("%s is bq load not target kind.", kind)
+				log.Printf("%s is bq load not target kind. MessageID=%v\n", kind, message.ID)
 				message.Ack()
 				return
 			}
@@ -66,7 +66,7 @@ func (s *BQLoadService) ReceiveStorageChangeNotify(ctx context.Context, jobID st
 
 		bqLoadJobId, err := bigquery.Load(ctx, lj.BQLoadProjectID, fmt.Sprintf("gs://%s/%s", gcsObject.Bucket, gcsObject.Name), lj.BQLoadDatasetID, kind)
 		if err != nil {
-			log.Printf("failed bigquery.Load() message.ID=%v,GCSObjectID=%v,err=%v\n", message.ID, gcsObject.Name, err)
+			log.Printf("failed bigquery.Load() MessageID=%v,GCSObjectID=%v,err=%v\n", message.ID, gcsObject.Name, err)
 			message.Nack()
 			return
 		}
@@ -79,6 +79,7 @@ func (s *BQLoadService) ReceiveStorageChangeNotify(ctx context.Context, jobID st
 			return
 		}
 
+		log.Printf("MessageID=%v,GCSObjectID=%v,kind=%v is Ack\n", message.ID, gcsObject.Name, kind)
 		message.Ack()
 	})
 }
