@@ -13,7 +13,10 @@ import (
 	"cloud.google.com/go/pubsub"
 	"github.com/gcpug/ds2bq/datastore"
 	"github.com/morikuni/failure"
+	"github.com/sinmetal/silverdog/dogtime"
 )
+
+var ErrTimeout failure.StringCode = "Timeout"
 
 type DatastoreExportJobCheckRequest struct {
 	DS2BQJobID           string
@@ -102,39 +105,49 @@ func ReceiveStorageChangeNotify(ctx context.Context, ds2bqJobID string) error {
 	errch := make(chan error, 1)
 	go func() {
 		if err := ls.ReceiveStorageChangeNotify(cctx, ds2bqJobID); err != nil {
+			log.Printf("failed ReceiveStorageChangeNotify. jobID=%s\n", ds2bqJobID)
 			errch <- err
 		}
-		log.Print("finish ! ReceiveStorageChangeNotify\n")
+		log.Printf("finish! ReceiveStorageChangeNotify. jobID=%s\n", ds2bqJobID)
 	}()
 
-	t := time.NewTicker(time.Second * 60)
+	return WaitBQLoadJobStatusChecker(cctx, 60*time.Second, bljs, ds2bqJobID, errch)
+}
+
+func WaitBQLoadJobStatusChecker(ctx context.Context, d time.Duration, bljs *BQLoadJobStore, ds2bqJobID string, errch chan error) error {
+	t := dogtime.NewTicker(d)
 	defer t.Stop()
 	for {
 		select {
-		case <-t.C:
-			jobs, err := bljs.List(cctx, ds2bqJobID)
-			if err != nil {
-				continue
-			}
-			allDone := true
-			for _, job := range jobs {
-				log.Printf("BQLoadJobStatusCheck. kind=%v,status=%v\n", job.Kind, job.Status)
-				if job.Status != BQLoadJobStatusDone {
-					allDone = false
-				}
-			}
-			log.Printf("BQLoadJobStatusCheck. allDone=%v\n", allDone)
+		case <-t.Chan():
+			allDone := IsBQLoadJobStatusAllDone(ctx, bljs, ds2bqJobID)
 			if allDone {
-				cctx.Done()
-				cancel()
+				ctx.Done()
 				return nil
 			}
-		case <-cctx.Done():
-			return failure.Unexpected("timeout")
+		case <-ctx.Done():
+			return failure.New(ErrTimeout)
 		case err := <-errch:
-			cancel()
+			allDone := IsBQLoadJobStatusAllDone(ctx, bljs, ds2bqJobID)
+			if allDone {
+				return nil
+			}
 			return err
-
 		}
 	}
+}
+
+func IsBQLoadJobStatusAllDone(ctx context.Context, bljs *BQLoadJobStore, ds2bqJobID string) bool {
+	jobs, err := bljs.List(ctx, ds2bqJobID)
+	if err != nil {
+		return false
+	}
+	allDone := true
+	for _, job := range jobs {
+		log.Printf("BQLoadJobStatusCheck. jobID=%v,kind=%v,status=%v\n", job.JobID, job.Kind, job.Status)
+		if job.Status != BQLoadJobStatusDone {
+			allDone = false
+		}
+	}
+	return allDone
 }

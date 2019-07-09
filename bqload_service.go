@@ -39,8 +39,6 @@ func (s *BQLoadService) InsertBigQueryLoadJob(ctx context.Context, jobID string)
 
 func (s *BQLoadService) ReceiveStorageChangeNotify(ctx context.Context, jobID string) error {
 	return s.pubsub.Subscription(s.storageChangeNotifySubscription).Receive(ctx, func(ctx context.Context, message *pubsub.Message) {
-		//fmt.Printf("Attributes=%+v\n", message.Attributes)
-		//log.Printf("Data=%s\n", message.Data)
 		gcsObject, err := EncodePayloadPull(message.Data)
 		if err != nil {
 			log.Printf("failed EncodePayload MessageID=%v,err=%v\n", message.ID, err)
@@ -51,7 +49,7 @@ func (s *BQLoadService) ReceiveStorageChangeNotify(ctx context.Context, jobID st
 		fmt.Printf("running %s\n", gcsObject.Name)
 		kind, ok := SearchKindName(gcsObject.Name)
 		if !ok {
-			log.Printf("%s is SearchKindName not hit.", gcsObject.Name)
+			log.Printf("%s is SearchKindName not hit. MessageID=%v\n", gcsObject.Name, message.ID)
 			message.Ack()
 			return
 		}
@@ -60,7 +58,7 @@ func (s *BQLoadService) ReceiveStorageChangeNotify(ctx context.Context, jobID st
 		if err != nil {
 			if err == datastore.ErrNoSuchEntity {
 				// BQ Load対象外はAckを返して終了
-				log.Printf("%s is bq load not target kind.", kind)
+				log.Printf("%s is bq load not target kind. MessageID=%v\n", kind, message.ID)
 				message.Ack()
 				return
 			}
@@ -68,7 +66,7 @@ func (s *BQLoadService) ReceiveStorageChangeNotify(ctx context.Context, jobID st
 
 		bqLoadJobId, err := bigquery.Load(ctx, lj.BQLoadProjectID, fmt.Sprintf("gs://%s/%s", gcsObject.Bucket, gcsObject.Name), lj.BQLoadDatasetID, kind)
 		if err != nil {
-			log.Printf("failed bigquery.Load() message.ID=%v,GCSObjectID=%v,err=%v\n", message.ID, gcsObject.Name, err)
+			log.Printf("failed bigquery.Load() MessageID=%v,GCSObjectID=%v,err=%v\n", message.ID, gcsObject.Name, err)
 			message.Nack()
 			return
 		}
@@ -81,7 +79,7 @@ func (s *BQLoadService) ReceiveStorageChangeNotify(ctx context.Context, jobID st
 			return
 		}
 
-		// TODO BQLoad Job Status Check QueueにAddする
+		log.Printf("MessageID=%v,GCSObjectID=%v,kind=%v is Ack\n", message.ID, gcsObject.Name, kind)
 		message.Ack()
 	})
 }
