@@ -24,6 +24,7 @@ func main() {
 	http.HandleFunc("/api/v1/datastore-export-job-check/", HandleDatastoreExportJobCheckAPI)
 	http.HandleFunc("/api/v1/datastore-export/", HandleDatastoreExportAPI)
 	http.HandleFunc("/api/v1/storage-change-notify/", HandleStorageChangeNotifyAPI)
+	http.HandleFunc("/api/v1/logtest/", HandleLogTestAPI)
 	http.HandleFunc("/", HandleHealthCheck)
 
 	port := os.Getenv("PORT")
