@@ -20,6 +20,8 @@ func HandleLogTestAPI(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		slog.Info(ctx, slog.KV{"MSG", "slog.Value is ng"})
 	}
+	lc.Entry.Severity = "INFO"
+	lc.Entry.HttpRequest.RequestURL = r.RequestURI
 	j, err := json.Marshal(lc)
 	if err != nil {
 		slog.Info(ctx, slog.KV{"MSG", fmt.Sprintf("failed json.Marshal", err)})
