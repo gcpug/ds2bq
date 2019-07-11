@@ -10,7 +10,7 @@ import (
 
 func HandleLogTestAPI(w http.ResponseWriter, r *http.Request) {
 	var status int
-	ctx := slog.WithValueForHTTP(r.Context(), *r)
+	ctx := slog.WithValueForHTTP(r.Context(), r)
 	defer slog.FlushWithHTTPResponse(ctx, status)
 
 	for k, v := range r.Header {
