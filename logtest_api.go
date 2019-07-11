@@ -9,8 +9,9 @@ import (
 )
 
 func HandleLogTestAPI(w http.ResponseWriter, r *http.Request) {
-	ctx := slog.WithValue(r.Context())
-	defer slog.Flush(ctx)
+	var status int
+	ctx := slog.WithValueForHTTP(r.Context(), *r)
+	defer slog.FlushWithHTTPResponse(ctx, status)
 
 	for k, v := range r.Header {
 		slog.Info(ctx, slog.KV{k, v})
@@ -21,7 +22,6 @@ func HandleLogTestAPI(w http.ResponseWriter, r *http.Request) {
 		slog.Info(ctx, slog.KV{"MSG", "slog.Value is ng"})
 	}
 	lc.Entry.Severity = "INFO"
-	lc.Entry.HttpRequest.RequestURL = r.RequestURI
 	j, err := json.Marshal(lc)
 	if err != nil {
 		slog.Info(ctx, slog.KV{"MSG", fmt.Sprintf("failed json.Marshal", err)})
@@ -32,4 +32,7 @@ func HandleLogTestAPI(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Info(ctx, slog.KV{"MSG", fmt.Sprintf("failed json.Marshal", err)})
 	}
+	status = http.StatusOK
+	w.WriteHeader(status)
+
 }

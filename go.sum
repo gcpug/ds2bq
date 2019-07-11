@@ -111,6 +111,8 @@ github.com/sinmetal/slog v0.0.0-20190711053637-464ece1c004f h1:ct+Y0kkQbcH6Ll6o3
 github.com/sinmetal/slog v0.0.0-20190711053637-464ece1c004f/go.mod h1:7abRLuXyxKUl/2wBVCkDmFPU8bI4nRVIoZDqOPv5W4o=
 github.com/sinmetal/slog v0.0.0-20190711064951-3bf5344ba117 h1:PjyTprOtsCOmJfldbFT8CxGy3rMn6YmHzRPG8QZGZmQ=
 github.com/sinmetal/slog v0.0.0-20190711064951-3bf5344ba117/go.mod h1:7abRLuXyxKUl/2wBVCkDmFPU8bI4nRVIoZDqOPv5W4o=
+github.com/sinmetal/slog v0.0.0-20190711081825-b0a0994db159 h1:HeaoUYVk5s246zq/L7Fe2ng6wiH/3fAjWcw4yy6mm1I=
+github.com/sinmetal/slog v0.0.0-20190711081825-b0a0994db159/go.mod h1:7abRLuXyxKUl/2wBVCkDmFPU8bI4nRVIoZDqOPv5W4o=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
