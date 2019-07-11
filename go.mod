@@ -6,7 +6,7 @@ require (
 	github.com/morikuni/failure v0.11.0
 	github.com/sinmetal/gcpmetadata v0.0.0-20190612100641-8951dfda8549
 	github.com/sinmetal/silverdog v0.0.0-20190709122325-a885443c3d17
-	github.com/sinmetal/slog v0.0.0-20190709124601-586365e285f5
+	github.com/sinmetal/slog v0.0.0-20190711053637-464ece1c004f
 	go.mercari.io/datastore v1.4.2
 	google.golang.org/api v0.6.0
 	google.golang.org/genproto v0.0.0-20190611190212-a7e196e89fd3
