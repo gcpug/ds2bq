@@ -9,9 +9,9 @@ import (
 )
 
 func HandleLogTestAPI(w http.ResponseWriter, r *http.Request) {
-	var status *int
+	var slogRes slog.HTTPResponse
 	ctx := slog.WithValueForHTTP(r.Context(), r)
-	defer slog.FlushWithHTTPResponse(ctx, status)
+	defer slog.FlushWithHTTPResponse(ctx, &slogRes)
 
 	for k, v := range r.Header {
 		slog.Info(ctx, slog.KV{k, v})
@@ -32,8 +32,7 @@ func HandleLogTestAPI(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Info(ctx, slog.KV{"MSG", fmt.Sprintf("failed json.Marshal", err)})
 	}
-	var s = http.StatusOK
-	status = &s
-	w.WriteHeader(s)
 
+	slogRes.Status = http.StatusOK
+	w.WriteHeader(slogRes.Status)
 }
