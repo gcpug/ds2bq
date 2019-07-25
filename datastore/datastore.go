@@ -2,7 +2,9 @@ package datastore
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
+	"time"
 
 	cds "cloud.google.com/go/datastore"
 	"github.com/morikuni/failure"
@@ -56,6 +58,41 @@ type JobStatusResponse struct {
 	Status     JobStatus
 	ErrCode    int64
 	ErrMessage string
+	Metadata   *ExportOperationResponseMetadata
+}
+
+// ExportOperationResponseMetadata is Datastore Export JobがDoneになった時のMetadataの内容
+type ExportOperationResponseMetadata struct {
+	Common           ExportOperationResponseMetadataCommon           `json:"common"`
+	ProgressEntities ExportOperationResponseMetadataProgressEntities `json:"progressEntities"`
+	ProgressBytes    ExportOperationResponseMetadataProgressBytes    `json:"progressBytes"`
+	EntityFilter     ExportOperationResponseMetadataEntityFilter     `json:"entityFilter"`
+	OutputURLPrefix  string                                          `json:"outputUrlPrefix"`
+}
+
+// ExportOperationResponseMetadataCommon is Datastore Export JobがDoneになった時のMetadataのCommonの内容
+type ExportOperationResponseMetadataCommon struct {
+	StartTime     time.Time `json:"startTime"`
+	EndTime       time.Time `json:"endTime"`
+	OperationType string    `json:"operationType"`
+	State         string    `json:"state"`
+}
+
+// ExportOperationResponseMetadataProgressEntities is Datastore Export JobがDoneになった時のMetadataのProgressEntitiesの内容
+type ExportOperationResponseMetadataProgressEntities struct {
+	WorkCompleted int64 `json:"workCompleted,string"`
+	WorkEstimated int64 `json:"workEstimated,string"`
+}
+
+// ExportOperationResponseMetadataProgressBytes is Datastore Export JobがDoneになった時のMetadataのProgressBytesの内容
+type ExportOperationResponseMetadataProgressBytes struct {
+	WorkCompleted int64 `json:"workCompleted,string"`
+	WorkEstimated int64 `json:"workEstimated,string"`
+}
+
+// ExportOperationResponseMetadataEntityFilter is Datastore Export JobがDoneになった時のMetadataのEntityFilterの内容
+type ExportOperationResponseMetadataEntityFilter struct {
+	Kinds []string `json:"kinds"`
 }
 
 // CheckJobStatus is Datastore Export Jobの状態を取得する
@@ -69,17 +106,18 @@ func CheckJobStatus(ctx context.Context, jobID string) (*JobStatusResponse, erro
 	if err != nil {
 		return nil, failure.Wrap(err, failure.Message("failed Operations.Get()."))
 	}
-
-	if err != nil {
-		return nil, failure.Wrap(err, failure.Message("failed Datastore Export API."))
-	}
 	if ope.Done == false {
-		return &JobStatusResponse{Running, 0, ""}, nil
+		return &JobStatusResponse{Running, 0, "", nil}, nil
 	}
 	if ope.Error != nil {
-		return &JobStatusResponse{Fail, ope.Error.Code, ope.Error.Message}, nil
+		return &JobStatusResponse{Fail, ope.Error.Code, ope.Error.Message, nil}, nil
 	}
-	return &JobStatusResponse{Done, 0, ""}, nil
+
+	var meta ExportOperationResponseMetadata
+	if err := json.Unmarshal(ope.Metadata, &meta); err != nil {
+		return nil, failure.Wrap(err, failure.Message("failed operation.Medata json.Unmarshal."))
+	}
+	return &JobStatusResponse{Done, 0, "", &meta}, nil
 }
 
 // GetAllKinds is Kind名一覧を返す
