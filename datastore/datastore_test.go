@@ -30,17 +30,17 @@ func TestCheckJobStatus(t *testing.T) {
 
 	ctx := context.Background()
 
-	jobName := "projects/gcpugjp-dev/operations/ASAxODAwMjIwODIJGnRsdWFmZWQHEjF0c2FlaHRyb24tYWlzYS1zYm9qLW5pbWRhGgoyEg"
+	jobName := "projects/gcpugjp-dev/operations/ASA4NjAwMjExOTIJGnRsdWFmZWQHEjF0c2FlaHRyb24tYWlzYS1zYm9qLW5pbWRhGgoyEg"
 
 	res, err := datastore.CheckJobStatus(ctx, jobName)
 	if err != nil {
-		t.Fatalf("failed datastore.CheckJobStatus")
+		t.Fatalf("failed datastore.CheckJobStatus. err=%v", err)
 	}
+	fmt.Printf("%+v\n", res.Metadata)
 
 	switch res.Status {
 	case datastore.Running:
 		fmt.Printf("%v JobStatus is %v\n", time.Now(), res.Status)
-		time.Sleep(60 * time.Second)
 	case datastore.Fail:
 		t.Fatalf("fail : %d:%s", res.ErrCode, res.ErrMessage)
 	default:

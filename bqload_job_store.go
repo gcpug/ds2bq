@@ -26,6 +26,7 @@ type BQLoadJobStatus int
 
 const (
 	BQLoadJobStatusDefault BQLoadJobStatus = iota
+	BQLoadJobStatusRunning
 	BQLoadJobStatusFailed
 	BQLoadJobStatusDone
 )
@@ -155,15 +156,16 @@ func (store *BQLoadJobStore) Get(ctx context.Context, jobID string, kind string)
 	return &e, nil
 }
 
-func (store *BQLoadJobStore) Update(ctx context.Context, jobID string, kind string, status BQLoadJobStatus) (*BQLoadJob, error) {
-	key := store.NewKey(ctx, jobID, kind)
+func (store *BQLoadJobStore) StartLoadJob(ctx context.Context, ds2bqJobID string, kind string, bqLoadJobID string) (*BQLoadJob, error) {
+	key := store.NewKey(ctx, ds2bqJobID, kind)
 	var e BQLoadJob
 	_, err := store.ds.RunInTransaction(ctx, func(tx datastore.Transaction) error {
 		if err := tx.Get(key, &e); err != nil {
 			return err
 		}
 
-		e.Status = status
+		e.BQLoadJobID = bqLoadJobID
+		e.Status = BQLoadJobStatusRunning
 		e.ChangeStatusAt = time.Now()
 
 		_, err := tx.Put(key, &e)
@@ -176,7 +178,7 @@ func (store *BQLoadJobStore) Update(ctx context.Context, jobID string, kind stri
 		if err == datastore.ErrNoSuchEntity {
 			return nil, err
 		}
-		return nil, failure.Wrap(err, failure.Messagef("failed datastore.RunInTx() jobID=%v,kind=%v", jobID, kind))
+		return nil, failure.Wrap(err, failure.Messagef("failed datastore.RunInTx() ds2bqJobID=%v,kind=%v,bqLoadJobID=%v", ds2bqJobID, kind, bqLoadJobID))
 	}
 	return &e, nil
 }
