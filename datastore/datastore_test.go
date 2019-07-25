@@ -41,7 +41,6 @@ func TestCheckJobStatus(t *testing.T) {
 	switch res.Status {
 	case datastore.Running:
 		fmt.Printf("%v JobStatus is %v\n", time.Now(), res.Status)
-		time.Sleep(60 * time.Second)
 	case datastore.Fail:
 		t.Fatalf("fail : %d:%s", res.ErrCode, res.ErrMessage)
 	default:

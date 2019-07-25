@@ -3,35 +3,44 @@ package main
 import (
 	"context"
 	"testing"
-	"time"
 
-	"cloud.google.com/go/pubsub"
+	"github.com/google/uuid"
+	"go.mercari.io/datastore"
+	"go.mercari.io/datastore/clouddatastore"
 )
 
 func TestBQLoadService_InsertBigQueryLoadJob(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	t.SkipNow() // 実際にDatastore APIを実行するので、普段はSkipする
 
-	store, err := NewBQLoadJobStore(ctx, DatastoreClient)
-	if err != nil {
-		t.Fatal(err)
-	}
-	jobID := "hoge"
-	_, err = store.Put(ctx, &BQLoadJobPutForm{
-		JobID: jobID,
-		Kind:  "PugEvent",
-	})
+	ctx := context.Background()
+
+	ds, err := clouddatastore.FromContext(ctx, datastore.WithProjectID(uuid.New().String()))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	pc, err := pubsub.NewClient(ctx, ProjectID)
+	s, err := NewBQLoadJobStore(ctx, ds)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	bqs := NewBQLoadService("gcpug-ds2bq-ds-export-object-change", pc, store)
-	if err := bqs.InsertBigQueryLoadJob(ctx, jobID); err != nil {
+	const ds2bqJobID = "helloJob"
+	{
+		form := &BQLoadJobPutForm{
+			JobID:           ds2bqJobID,
+			Kind:            "PugEvent",
+			BQLoadProjectID: "gcpugjp-dev",
+			BQLoadDatasetID: "datastore",
+		}
+		_, err = s.Put(ctx, form)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	ls := NewBQLoadService(s)
+	if err := ls.InsertBigQueryLoadJob(ctx, ds2bqJobID, "gs://datastore-backup-gcpugjp-dev/2019-07-25T10:35:08_16520"); err != nil {
 		t.Fatal(err)
 	}
+
 }

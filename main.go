@@ -23,7 +23,6 @@ var DatastoreClient datastore.Client
 func main() {
 	http.HandleFunc("/api/v1/datastore-export-job-check/", HandleDatastoreExportJobCheckAPI)
 	http.HandleFunc("/api/v1/datastore-export/", HandleDatastoreExportAPI)
-	http.HandleFunc("/api/v1/storage-change-notify/", HandleStorageChangeNotifyAPI)
 	http.HandleFunc("/", HandleHealthCheck)
 
 	port := os.Getenv("PORT")
@@ -38,7 +37,7 @@ func init() {
 	ctx := context.Background()
 	projectID, err := gcpmetadata.GetProjectID()
 	if err != nil {
-		log.Fatalf("failed ProjectID.err=%+v\n", err)
+		log.Fatalf("failed GetProjectID.err=%+v\n", err)
 		os.Exit(1)
 	}
 	ProjectID = projectID
