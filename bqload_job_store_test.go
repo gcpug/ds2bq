@@ -160,7 +160,7 @@ func TestBQLoadJobStore_Get(t *testing.T) {
 	}
 }
 
-func TestBQLoadJobStore_Update(t *testing.T) {
+func TestBQLoadJobStore_StartLoadJob(t *testing.T) {
 	ctx := context.Background()
 
 	ds, err := clouddatastore.FromContext(ctx, datastore.WithProjectID(uuid.New().String()))
@@ -173,10 +173,11 @@ func TestBQLoadJobStore_Update(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	const jobID = "helloJob"
+	const ds2bqJobID = "helloJob"
 	const kind = "SampleKind"
+	const bqLoadJobID = "sampleBQLoadJobID"
 	form := &BQLoadJobPutForm{
-		JobID:           jobID,
+		JobID:           ds2bqJobID,
 		Kind:            kind,
 		BQLoadProjectID: "hoge",
 		BQLoadDatasetID: "fuga",
@@ -192,14 +193,14 @@ func TestBQLoadJobStore_Update(t *testing.T) {
 		kind  string
 		want  error
 	}{
-		{"exists", jobID, kind, nil},
+		{"exists", ds2bqJobID, kind, nil},
 		{"not found", "hoge", "fuga", datastore.ErrNoSuchEntity},
 	}
 
 	for _, tt := range cases {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := s.Update(ctx, tt.jobID, tt.kind, BQLoadJobStatusFailed)
+			got, err := s.StartLoadJob(ctx, tt.jobID, tt.kind, bqLoadJobID)
 			if err != tt.want {
 				t.Errorf("want %v but got %v", tt.want, err)
 			}
@@ -207,17 +208,20 @@ func TestBQLoadJobStore_Update(t *testing.T) {
 				return
 			}
 
-			if e, g := fmt.Sprintf("%s-_-%s", jobID, kind), got.ID; e != g {
+			if e, g := fmt.Sprintf("%s-_-%s", ds2bqJobID, kind), got.ID; e != g {
 				t.Errorf("ID want %v but got %v", e, g)
 			}
-			if e, g := jobID, got.JobID; e != g {
+			if e, g := ds2bqJobID, got.JobID; e != g {
 				t.Errorf("JobID want %v but got %v", e, g)
 			}
 			if e, g := kind, got.Kind; e != g {
 				t.Errorf("Kind want %v but got %v", e, g)
 			}
-			if e, g := BQLoadJobStatusFailed, got.Status; e != g {
+			if e, g := BQLoadJobStatusRunning, got.Status; e != g {
 				t.Errorf("Status want %v but got %v", e, g)
+			}
+			if e, g := bqLoadJobID, got.BQLoadJobID; e != g {
+				t.Errorf("BQLoadJobID want %v but got %v", e, g)
 			}
 			if got.ChangeStatusAt.IsZero() {
 				t.Error("ChangeStatusAt is Zero")

@@ -4,16 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/gcpug/ds2bq/datastore"
+	"github.com/morikuni/failure"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
-	"time"
-
-	"cloud.google.com/go/pubsub"
-	"github.com/gcpug/ds2bq/datastore"
-	"github.com/morikuni/failure"
-	"github.com/sinmetal/silverdog/dogtime"
 )
 
 var ErrTimeout failure.StringCode = "Timeout"
@@ -73,8 +68,8 @@ func HandleDatastoreExportJobCheckAPI(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	case datastore.Done:
 		log.Printf("%s is Done...\n", form.DatastoreExportJobID)
-		if err := ReceiveStorageChangeNotify(r.Context(), form.DS2BQJobID); err != nil {
-			log.Printf("failed ReceiveStorageChangeNotify. err=%v\n", err)
+		if err := InsertBQLoadJobs(r.Context(), form.DS2BQJobID, res.Metadata.OutputURLPrefix); err != nil {
+			log.Printf("failed InsertBQLoadJobs. err=%v\n", err)
 		}
 		w.WriteHeader(http.StatusOK)
 	default:
@@ -83,71 +78,16 @@ func HandleDatastoreExportJobCheckAPI(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ReceiveStorageChangeNotify(ctx context.Context, ds2bqJobID string) error {
-	sub := os.Getenv("STORAGE_CHANGE_NOTIFY_SUBSCRIPTION")
-	if sub == "" {
-		log.Printf("STORAGE_CHANGE_NOTIFY_SUBSCRIPTION is empty")
-		return nil
-	}
-	ps, err := pubsub.NewClient(ctx, ProjectID)
-	if err != nil {
-		return failure.Wrap(err, failure.Message("failed pubsub.NewClient"))
-	}
+func InsertBQLoadJobs(ctx context.Context, ds2bqJobID string, outputURLPrefix string) error {
 	bljs, err := NewBQLoadJobStore(ctx, DatastoreClient)
 	if err != nil {
 		return failure.Wrap(err, failure.Message("failed NewBQLoadJobStore"))
 	}
-	ls := NewBQLoadService(sub, ps, bljs)
+	ls := NewBQLoadService(bljs)
 
-	cctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
-	defer cancel()
-
-	errch := make(chan error, 1)
-	go func() {
-		if err := ls.ReceiveStorageChangeNotify(cctx, ds2bqJobID); err != nil {
-			log.Printf("failed ReceiveStorageChangeNotify. jobID=%s\n", ds2bqJobID)
-			errch <- err
-		}
-		log.Printf("finish! ReceiveStorageChangeNotify. jobID=%s\n", ds2bqJobID)
-	}()
-
-	return WaitBQLoadJobStatusChecker(cctx, 60*time.Second, bljs, ds2bqJobID, errch)
-}
-
-func WaitBQLoadJobStatusChecker(ctx context.Context, d time.Duration, bljs *BQLoadJobStore, ds2bqJobID string, errch chan error) error {
-	t := dogtime.NewTicker(d)
-	defer t.Stop()
-	for {
-		select {
-		case <-t.Chan():
-			allDone := IsBQLoadJobStatusAllDone(ctx, bljs, ds2bqJobID)
-			if allDone {
-				ctx.Done()
-				return nil
-			}
-		case <-ctx.Done():
-			return failure.New(ErrTimeout)
-		case err := <-errch:
-			allDone := IsBQLoadJobStatusAllDone(ctx, bljs, ds2bqJobID)
-			if allDone {
-				return nil
-			}
-			return err
-		}
+	if err := ls.InsertBigQueryLoadJob(ctx, ds2bqJobID, outputURLPrefix); err != nil {
+		return failure.Wrap(err, failure.Message("failed BQLoadService.InsertBigQueryLoadJob"))
 	}
-}
 
-func IsBQLoadJobStatusAllDone(ctx context.Context, bljs *BQLoadJobStore, ds2bqJobID string) bool {
-	jobs, err := bljs.List(ctx, ds2bqJobID)
-	if err != nil {
-		return false
-	}
-	allDone := true
-	for _, job := range jobs {
-		log.Printf("BQLoadJobStatusCheck. jobID=%v,kind=%v,status=%v\n", job.JobID, job.Kind, job.Status)
-		if job.Status != BQLoadJobStatusDone {
-			allDone = false
-		}
-	}
-	return allDone
+	return nil
 }

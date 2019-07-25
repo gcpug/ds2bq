@@ -38,7 +38,7 @@ func init() {
 	ctx := context.Background()
 	projectID, err := gcpmetadata.GetProjectID()
 	if err != nil {
-		log.Fatalf("failed ProjectID.err=%+v\n", err)
+		log.Fatalf("failed GetProjectID.err=%+v\n", err)
 		os.Exit(1)
 	}
 	ProjectID = projectID
