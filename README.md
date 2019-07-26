@@ -29,7 +29,7 @@ gcloud iam service-accounts create scheduler --display-name scheduler
 gcloud beta run services add-iam-policy-binding gcpug-ds2bq --member serviceAccount:scheduler@$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role roles/run.invoker
 gcloud beta run services add-iam-policy-binding gcpug-ds2bq --member serviceAccount:gcpug-ds2bq@$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role roles/run.invoker
 
-gcloud scheduler jobs create http gcpug-ds2bq --schedule="2 2 * * *" --uri=https://{YOUR_DS2BQ_CLOUD_RUN_URI}/api/v1/datastore-export/ \
+gcloud scheduler jobs create http gcpug-ds2bq --schedule="16 16 * * *" --uri=https://{YOUR_DS2BQ_CLOUD_RUN_URI}/api/v1/datastore-export/ \
   --message-body='{"projectID": "datastore-project","outputGCSFilePath": "gs://datastore-project-ds2bq-test","allKinds":true, "bqLoadProjectId":"datastore-project", "bqLoadDatasetId":"ds2bq_test"}' \
   --oidc-service-account-email=scheduler@$DS2BQ_PROJECT_ID.iam.gserviceaccount.com
 
