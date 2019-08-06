@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"google.golang.org/api/option"
+	"google.golang.org/grpc"
 
 	"log"
 	"net/http"
@@ -51,13 +53,13 @@ func init() {
 	ServiceAccountEmail = sa
 
 	{
-		TasksClient, err = cloudtasks.NewClient(ctx)
+		TasksClient, err = cloudtasks.NewClient(ctx, option.WithGRPCDialOption(grpc.WithBlock()))
 		if err != nil {
 			log.Fatalf("failed cloudtasks.NewClient.err=%+v", err)
 		}
 	}
 	{
-		client, err := ds.NewClient(ctx, ProjectID)
+		client, err := ds.NewClient(ctx, ProjectID, option.WithGRPCDialOption(grpc.WithBlock()))
 		if err != nil {
 			log.Fatalf("failed clouddatastore.NewClient.err=%+v", err)
 		}
