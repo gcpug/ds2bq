@@ -70,6 +70,8 @@ func HandleDatastoreExportJobCheckAPI(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%s is Done...\n", form.DatastoreExportJobID)
 		if err := InsertBQLoadJobs(r.Context(), form.DS2BQJobID, res.Metadata.OutputURLPrefix); err != nil {
 			log.Printf("failed InsertBQLoadJobs. err=%v\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 		w.WriteHeader(http.StatusOK)
 	default:
