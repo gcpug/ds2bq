@@ -95,7 +95,20 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	jobID := jobStore.NewJobID(r.Context())
+
+	dsexportJobStore, err := NewDSExportJobStore(r.Context(), DatastoreClient)
+	if err != nil {
+		msg := fmt.Sprintf("failed NewDSExportJobStore() form=%+v.err=%+v", form, err)
+		log.Println(msg)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err := w.Write([]byte(msg))
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+
+	jobID := dsexportJobStore.NewDS2BQJobID(r.Context())
 	_, err = jobStore.PutMulti(r.Context(), BuildBQLoadJobPutMultiForm(jobID, bqLoadKinds, form))
 	if err != nil {
 		msg := fmt.Sprintf("failed BQLoadJobStore.PutMulti() jobID=%v,bqLoadKinds=%+v.err=%+v", jobID, bqLoadKinds, err)

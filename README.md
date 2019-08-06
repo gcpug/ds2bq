@@ -41,3 +41,13 @@ gcloud projects add-iam-policy-binding $PROJECT_ID --member=serviceAccount:gcpug
 gcloud projects add-iam-policy-binding $PROJECT_ID --member=serviceAccount:gcpug-ds2bq@$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role=roles/bigquery.dataEditor
 gcloud projects add-iam-policy-binding $PROJECT_ID --member=serviceAccount:gcpug-ds2bq@$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role=roles/bigquery.jobUser
 ```
+
+## Test
+
+```
+gcloud beta emulators datastore start
+```
+
+```
+export GOOGLE_CLOUD_PROJECT="{YOUR_PROJECT_ID}"
+```
