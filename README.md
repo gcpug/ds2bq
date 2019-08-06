@@ -17,6 +17,7 @@ gcloud iam service-accounts create gcpug-ds2bq --display-name gcpug-ds2bq
 gcloud projects add-iam-policy-binding $DS2BQ_PROJECT_ID --member=serviceAccount:gcpug-ds2bq@$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role=roles/datastore.user
 gcloud projects add-iam-policy-binding $DS2BQ_PROJECT_ID --member=serviceAccount:gcpug-ds2bq@$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role=roles/cloudtasks.enqueuer
 gcloud projects add-iam-policy-binding $DS2BQ_PROJECT_ID --member=serviceAccount:gcpug-ds2bq@$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role=roles/iam.serviceAccountUser
+gcloud projects add-iam-policy-binding $DS2BQ_PROJECT_ID --member=serviceAccount:gcpug-ds2bq@$$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role=roles/bigquery.jobUser
 
 gcloud beta run deploy gcpug-ds2bq --image=gcr.io/gcpug-container/ds2bq:v0.1.1 --service-account=gcpug-ds2bq@$DS2BQ_PROJECT_ID.iam.gserviceaccount.com
 
