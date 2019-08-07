@@ -47,6 +47,19 @@ func HandleDatastoreExportJobCheckAPI(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("%s\n", string(b))
 
+	dseJobStore, err := NewDSExportJobStore(r.Context(), DatastoreClient)
+	if err != nil {
+		msg := fmt.Sprintf("failed NewDSExportJobStore.err=%+v", err)
+		log.Println(msg)
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusBadRequest)
+		_, err := w.Write([]byte(msg))
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+
 	res, err := datastore.CheckJobStatus(r.Context(), form.DatastoreExportJobID)
 	if err != nil {
 		msg := fmt.Sprintf("failed datastore.CheckJobStatus.err=%+v", err)
@@ -65,11 +78,26 @@ func HandleDatastoreExportJobCheckAPI(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict)
 	case datastore.Fail:
 		log.Printf("%s is Fail. ErrCode=%v,ErrMessage=%v\n", form.DatastoreExportJobID, res.ErrCode, res.ErrMessage)
+
+		_, err := dseJobStore.FinishExportJob(r.Context(), form.DS2BQJobID, DSExportJobStatusFailed, fmt.Sprintf("Code=%v,MSG=%v,BODY=%+v", res.ErrCode, res.ErrMessage))
+		if err != nil {
+			log.Printf("failed DSExportJobStore.FinishExportJob. DS2BQJobID=%v,err=%v\n", form.DS2BQJobID, err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 	case datastore.Done:
 		log.Printf("%s is Done...\n", form.DatastoreExportJobID)
+
+		_, err := dseJobStore.FinishExportJob(r.Context(), form.DS2BQJobID, DSExportJobStatusDone, "")
+		if err != nil {
+			log.Printf("failed DSExportJobStore.FinishExportJob. DS2BQJobID=%v,err=%v\n", form.DS2BQJobID, err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
 		if err := InsertBQLoadJobs(r.Context(), form.DS2BQJobID, res.Metadata.OutputURLPrefix); err != nil {
-			log.Printf("failed InsertBQLoadJobs. err=%v\n", err)
+			log.Printf("failed InsertBQLoadJobs. DS2BQJobID=%v,err=%v\n", form.DS2BQJobID, err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

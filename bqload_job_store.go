@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/morikuni/failure"
 	"go.mercari.io/datastore"
 )
@@ -45,6 +44,9 @@ type BQLoadJob struct {
 	UpdatedAt       time.Time
 	SchemaVersion   int
 }
+
+var _ datastore.PropertyLoadSaver = &BQLoadJob{}
+var _ datastore.KeyLoader = &BQLoadJob{}
 
 // BQLoadJobPutForm is Put する時のRequest内容
 type BQLoadJobPutForm struct {
@@ -88,12 +90,6 @@ func (e *BQLoadJob) Save(ctx context.Context) ([]datastore.Property, error) {
 	e.SchemaVersion = 1
 
 	return datastore.SaveStruct(ctx, e)
-}
-
-// NewJobID is JobIDを生成する
-// JobIDは一度のDatastore Export, BQ Loadで一つ発行され、複数KindのExportが全て終わっているかを確認するためのID
-func (store *BQLoadJobStore) NewJobID(ctx context.Context) string {
-	return uuid.New().String()
 }
 
 func (store *BQLoadJobStore) NewKey(ctx context.Context, jobID string, kind string) datastore.Key {

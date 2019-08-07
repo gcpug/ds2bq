@@ -41,3 +41,14 @@ gcloud projects add-iam-policy-binding $PROJECT_ID --member=serviceAccount:gcpug
 gcloud projects add-iam-policy-binding $PROJECT_ID --member=serviceAccount:gcpug-ds2bq@$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role=roles/bigquery.dataEditor
 gcloud projects add-iam-policy-binding $PROJECT_ID --member=serviceAccount:gcpug-ds2bq@$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role=roles/bigquery.jobUser
 ```
+
+## Test
+
+```
+gcloud beta emulators datastore start
+```
+
+```
+export GOOGLE_CLOUD_PROJECT=$DS2BQ_PROJECT_ID
+export JOB_STATUS_CHECK_QUEUE_NAME=projects/$DS2BQ_PROJECT_ID/locations/asia-northeast1/queues/gcpug-ds2bq-datastore-job-check
+```

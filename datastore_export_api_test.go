@@ -17,7 +17,11 @@ func TestHandleDatastoreExportAPI(t *testing.T) {
 	t.SkipNow() // 実際にDatastore APIを実行するので、普段はSkipする
 
 	ctx := context.Background()
-	store, err := NewBQLoadJobStore(ctx, DatastoreClient)
+	dsexportjobStore, err := NewDSExportJobStore(ctx, DatastoreClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bqLoadJobStore, err := NewBQLoadJobStore(ctx, DatastoreClient)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +72,15 @@ func TestHandleDatastoreExportAPI(t *testing.T) {
 			if err := json.NewDecoder(resp.Body).Decode(&respBody); err != nil {
 				t.Fatal(err)
 			}
-			job, err := store.Get(ctx, respBody.DS2BQJobID, "PugEvent")
+			_, err = dsexportjobStore.Get(ctx, respBody.DS2BQJobID)
+			if err != nil {
+				if err == mds.ErrNoSuchEntity {
+					t.Errorf("DSExportjobStore ErrNoSuchEntity JobID=%s", respBody.DS2BQJobID)
+					return
+				}
+				t.Fatal(err)
+			}
+			job, err := bqLoadJobStore.Get(ctx, respBody.DS2BQJobID, "PugEvent")
 			if err != nil {
 				if err == mds.ErrNoSuchEntity {
 					t.Errorf("BQLoadJobStore ErrNoSuchEntity JobID=%s,Kind=%s", respBody.DS2BQJobID, "PugEvent")
