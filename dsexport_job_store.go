@@ -4,9 +4,9 @@ package main
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/morikuni/failure"
 	"go.mercari.io/datastore"
 )
@@ -93,6 +93,18 @@ func (store *DSExportJobStore) Create(ctx context.Context, ds2bqJobID string, bo
 	_, err := store.ds.Put(ctx, store.NewKey(ctx, ds2bqJobID), &e)
 	if err != nil {
 		return nil, failure.Wrap(err)
+	}
+	return &e, nil
+}
+
+func (store *DSExportJobStore) Get(ctx context.Context, ds2bqJobID string) (*DSExportJob, error) {
+	var e DSExportJob
+	err := store.ds.Get(ctx, store.NewKey(ctx, ds2bqJobID), &e)
+	if err != nil {
+		if err == datastore.ErrNoSuchEntity {
+			return nil, err
+		}
+		return nil, failure.Wrap(err, failure.Messagef("failed datastore.Get() ds2bqJobID=%v", ds2bqJobID))
 	}
 	return &e, nil
 }

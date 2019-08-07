@@ -49,5 +49,6 @@ gcloud beta emulators datastore start
 ```
 
 ```
-export GOOGLE_CLOUD_PROJECT="{YOUR_PROJECT_ID}"
+export GOOGLE_CLOUD_PROJECT=$DS2BQ_PROJECT_ID
+export JOB_STATUS_CHECK_QUEUE_NAME=projects/$DS2BQ_PROJECT_ID/locations/asia-northeast1/queues/gcpug-ds2bq-datastore-job-check
 ```
