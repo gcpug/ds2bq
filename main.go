@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"cloud.google.com/go/cloudtasks/apiv2beta3"
 	ds "cloud.google.com/go/datastore"
@@ -15,7 +14,6 @@ import (
 	"go.mercari.io/datastore/clouddatastore"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/keepalive"
 )
 
 var ServiceAccountEmail string
@@ -53,19 +51,17 @@ func init() {
 	}
 	ServiceAccountEmail = sa
 
-	keepaliveOption := option.WithGRPCDialOption(grpc.WithKeepaliveParams(keepalive.ClientParameters{
-		Time:                30 * time.Second,
-		Timeout:             20 * time.Second,
-		PermitWithoutStream: true,
-	}))
+	opts := []option.ClientOption{
+		option.WithGRPCDialOption(grpc.WithDefaultCallOptions(grpc.WaitForReady(true))),
+	}
 	{
-		TasksClient, err = cloudtasks.NewClient(ctx, option.WithGRPCDialOption(grpc.WithBlock()), keepaliveOption)
+		TasksClient, err = cloudtasks.NewClient(ctx, opts...)
 		if err != nil {
 			log.Fatalf("failed cloudtasks.NewClient.err=%+v", err)
 		}
 	}
 	{
-		client, err := ds.NewClient(ctx, ProjectID, option.WithGRPCDialOption(grpc.WithBlock()), keepaliveOption)
+		client, err := ds.NewClient(ctx, ProjectID, opts...)
 		if err != nil {
 			log.Fatalf("failed clouddatastore.NewClient.err=%+v", err)
 		}

@@ -9,10 +9,8 @@ import (
 	"os"
 
 	"cloud.google.com/go/cloudtasks/apiv2beta3"
-	"github.com/googleapis/gax-go/v2"
 	"github.com/morikuni/failure"
 	taskspb "google.golang.org/genproto/googleapis/cloud/tasks/v2beta3"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -63,7 +61,7 @@ func (q *JobStatusCheckQueue) AddTask(ctx context.Context, body *DatastoreExport
 
 	var retryCount int
 	for {
-		_, err = q.tasks.CreateTask(ctx, req, gax.WithGRPCOptions(grpc.WaitForReady(true)))
+		_, err = q.tasks.CreateTask(ctx, req)
 		if err != nil {
 			if status.Code(err) == codes.Unavailable {
 				retryCount++
