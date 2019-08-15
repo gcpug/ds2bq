@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go.opencensus.io/trace"
 	"log"
 	"os"
 
@@ -36,6 +37,9 @@ func NewJobStatusCheckQueue(host string, tasks *cloudtasks.Client) (*JobStatusCh
 }
 
 func (q *JobStatusCheckQueue) AddTask(ctx context.Context, body *DatastoreExportJobCheckRequest) error {
+	ctx, span := trace.StartSpan(ctx, "JobStatusCheckQueue.AddTask")
+	defer span.End()
+
 	message, err := json.Marshal(body)
 	if err != nil {
 		return failure.Wrap(err, failure.Messagef("failed json.Marshal. body=%+v\n", body))

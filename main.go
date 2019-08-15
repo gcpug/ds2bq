@@ -9,9 +9,13 @@ import (
 
 	"cloud.google.com/go/cloudtasks/apiv2beta3"
 	ds "cloud.google.com/go/datastore"
+	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/sinmetal/gcpmetadata"
 	"go.mercari.io/datastore"
 	"go.mercari.io/datastore/clouddatastore"
+	"go.opencensus.io/exporter/stackdriver/propagation"
+	"go.opencensus.io/plugin/ochttp"
+	"go.opencensus.io/trace"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 )
@@ -22,9 +26,15 @@ var TasksClient *cloudtasks.Client
 var DatastoreClient datastore.Client
 
 func main() {
-	http.HandleFunc("/api/v1/datastore-export-job-check/", HandleDatastoreExportJobCheckAPI)
-	http.HandleFunc("/api/v1/datastore-export/", HandleDatastoreExportAPI)
-	http.HandleFunc("/", HandleHealthCheck)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/datastore-export-job-check/", HandleDatastoreExportJobCheckAPI)
+	mux.HandleFunc("/api/v1/datastore-export/", HandleDatastoreExportAPI)
+	mux.HandleFunc("/", HandleHealthCheck)
+
+	http.Handle("/", &ochttp.Handler{
+		Propagation: &propagation.HTTPFormat{},
+		Handler:     mux,
+	})
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -35,11 +45,12 @@ func main() {
 }
 
 func init() {
-	ctx := context.Background()
+	ctx, span := trace.StartSpan(context.Background(), "/init")
+	defer span.End()
+
 	projectID, err := gcpmetadata.GetProjectID()
 	if err != nil {
 		log.Fatalf("failed GetProjectID.err=%+v\n", err)
-		os.Exit(1)
 	}
 	ProjectID = projectID
 	log.Printf("ProjectID is %s\n", projectID)
@@ -47,9 +58,18 @@ func init() {
 	sa, err := gcpmetadata.GetServiceAccountEmail()
 	if err != nil {
 		log.Fatalf("failed get ServiceAccountEmail.err=%+v\n", err)
-		os.Exit(1)
 	}
 	ServiceAccountEmail = sa
+
+	if gcpmetadata.OnGCP() {
+		exporter, err := stackdriver.NewExporter(stackdriver.Options{
+			ProjectID: ProjectID,
+		})
+		if err != nil {
+			log.Fatalf("failed stackdriver.NewExporter.err=%+v\n", err)
+		}
+		trace.RegisterExporter(exporter)
+	}
 
 	opts := []option.ClientOption{
 		option.WithGRPCDialOption(grpc.WithDefaultCallOptions(grpc.WaitForReady(true))),
