@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 
 	"cloud.google.com/go/cloudtasks/apiv2beta3"
@@ -12,6 +13,8 @@ import (
 	"github.com/morikuni/failure"
 	taskspb "google.golang.org/genproto/googleapis/cloud/tasks/v2beta3"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type JobStatusCheckQueue struct {
@@ -58,9 +61,21 @@ func (q *JobStatusCheckQueue) AddTask(ctx context.Context, body *DatastoreExport
 	}
 	req.Task.GetHttpRequest().Body = []byte(message)
 
-	_, err = q.tasks.CreateTask(ctx, req, gax.WithGRPCOptions(grpc.WaitForReady(true)))
-	if err != nil {
-		return failure.Wrap(err, failure.Messagef("failed cloudtasks.CreateTask. body=%+v\n", body))
+	var retryCount int
+	for {
+		_, err = q.tasks.CreateTask(ctx, req, gax.WithGRPCOptions(grpc.WaitForReady(true)))
+		if err != nil {
+			if status.Code(err) == codes.Unavailable {
+				retryCount++
+				if retryCount > 5 {
+					return failure.Wrap(err, failure.Messagef("failed cloudtasks.CreateTask. body=%+v\n", body))
+				}
+				log.Printf("failed cloudtasks.CreateTask. body=%+v, retryCount=%v\n", body, retryCount)
+				continue
+			}
+			return failure.Wrap(err, failure.Messagef("failed cloudtasks.CreateTask. body=%+v\n", body))
+		}
+		break
 	}
 
 	return nil
