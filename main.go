@@ -69,6 +69,7 @@ func init() {
 			log.Fatalf("failed stackdriver.NewExporter.err=%+v\n", err)
 		}
 		trace.RegisterExporter(exporter)
+		trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 	}
 
 	opts := []option.ClientOption{
