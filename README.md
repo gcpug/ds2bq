@@ -18,6 +18,8 @@ gcloud projects add-iam-policy-binding $DS2BQ_PROJECT_ID --member=serviceAccount
 gcloud projects add-iam-policy-binding $DS2BQ_PROJECT_ID --member=serviceAccount:gcpug-ds2bq@$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role=roles/cloudtasks.enqueuer
 gcloud projects add-iam-policy-binding $DS2BQ_PROJECT_ID --member=serviceAccount:gcpug-ds2bq@$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role=roles/iam.serviceAccountUser
 gcloud projects add-iam-policy-binding $DS2BQ_PROJECT_ID --member=serviceAccount:gcpug-ds2bq@$$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role=roles/bigquery.jobUser
+gcloud projects add-iam-policy-binding $DS2BQ_PROJECT_ID --member=serviceAccount:gcpug-ds2bq@$$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role=roles/cloudtrace.agent
+gcloud projects add-iam-policy-binding $DS2BQ_PROJECT_ID --member=serviceAccount:gcpug-ds2bq@$$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role=roles/monitoring.metricWriter
 
 gcloud beta run deploy gcpug-ds2bq --image=gcr.io/gcpug-container/ds2bq:v0.1.1 --service-account=gcpug-ds2bq@$DS2BQ_PROJECT_ID.iam.gserviceaccount.com
 
