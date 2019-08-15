@@ -3,9 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"google.golang.org/api/option"
-	"google.golang.org/grpc"
-
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +12,8 @@ import (
 	"github.com/sinmetal/gcpmetadata"
 	"go.mercari.io/datastore"
 	"go.mercari.io/datastore/clouddatastore"
+	"google.golang.org/api/option"
+	"google.golang.org/grpc"
 )
 
 var ServiceAccountEmail string
@@ -52,14 +51,17 @@ func init() {
 	}
 	ServiceAccountEmail = sa
 
+	opts := []option.ClientOption{
+		option.WithGRPCDialOption(grpc.WithDefaultCallOptions(grpc.WaitForReady(true))),
+	}
 	{
-		TasksClient, err = cloudtasks.NewClient(ctx, option.WithGRPCDialOption(grpc.WithBlock()))
+		TasksClient, err = cloudtasks.NewClient(ctx, opts...)
 		if err != nil {
 			log.Fatalf("failed cloudtasks.NewClient.err=%+v", err)
 		}
 	}
 	{
-		client, err := ds.NewClient(ctx, ProjectID, option.WithGRPCDialOption(grpc.WithBlock()))
+		client, err := ds.NewClient(ctx, ProjectID, opts...)
 		if err != nil {
 			log.Fatalf("failed clouddatastore.NewClient.err=%+v", err)
 		}

@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gcpug/ds2bq/datastore"
-	"github.com/morikuni/failure"
 	"io/ioutil"
 	"log"
 	"net/http"
+
+	"github.com/gcpug/ds2bq/datastore"
+	"github.com/morikuni/failure"
 )
 
 var ErrTimeout failure.StringCode = "Timeout"
