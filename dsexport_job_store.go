@@ -34,6 +34,7 @@ type DSExportJob struct {
 	ID                      string `datastore:"-"`
 	DSExportJobID           string
 	JobRequestBody          string `datastore:",noindex"`
+	StatusCheckCount        int
 	Status                  DSExportJobStatus
 	ChangeStatusAt          time.Time
 	DSExportResponseMessage string `datastore:",noindex"`
@@ -120,6 +121,29 @@ func (store *DSExportJobStore) StartExportJob(ctx context.Context, ds2bqJobID st
 		e.Status = DSExportJobStatusRunning
 		e.ChangeStatusAt = time.Now()
 
+		_, err := tx.Put(key, &e)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == datastore.ErrNoSuchEntity {
+			return nil, err
+		}
+		return nil, failure.Wrap(err, failure.Messagef("failed datastore.RunInTx() ds2bqJobID=%v", ds2bqJobID))
+	}
+	return &e, nil
+}
+
+func (store *DSExportJobStore) IncrementJobStatusCheckCount(ctx context.Context, ds2bqJobID string) (*DSExportJob, error) {
+	key := store.NewKey(ctx, ds2bqJobID)
+	var e DSExportJob
+	_, err := store.ds.RunInTransaction(ctx, func(tx datastore.Transaction) error {
+		if err := tx.Get(key, &e); err != nil {
+			return err
+		}
+		e.StatusCheckCount++
 		_, err := tx.Put(key, &e)
 		if err != nil {
 			return err

@@ -82,3 +82,35 @@ func TestDSExportJobStore_Lifecycle(t *testing.T) {
 		}
 	}
 }
+
+func TestDSExportJobStore_IncrementJobStatusCheckCount(t *testing.T) {
+	ctx := context.Background()
+
+	cdsc, err := cds.NewClient(ctx, uuid.New().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ds, err := clouddatastore.FromClient(ctx, cdsc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s, err := NewDSExportJobStore(ctx, ds)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ds2bqJobID := s.NewDS2BQJobID(ctx)
+	_, err = s.Create(ctx, ds2bqJobID, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	job, err := s.IncrementJobStatusCheckCount(ctx, ds2bqJobID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e, g := 1, job.StatusCheckCount; e != g {
+		t.Errorf("want StatusCheckCount is %v but got %v", e, g)
+	}
+}

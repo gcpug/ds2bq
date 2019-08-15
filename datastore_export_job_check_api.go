@@ -76,11 +76,18 @@ func HandleDatastoreExportJobCheckAPI(w http.ResponseWriter, r *http.Request) {
 	switch res.Status {
 	case datastore.Running:
 		log.Printf("%s is Running...\n", form.DatastoreExportJobID)
+
+		_, err := dseJobStore.IncrementJobStatusCheckCount(r.Context(), form.DS2BQJobID)
+		if err != nil {
+			log.Printf("failed DSExportJobStore.IncrementJobStatusCheckCount. DS2BQJobID=%v,err=%v\n", form.DS2BQJobID, err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusConflict)
 	case datastore.Fail:
 		log.Printf("%s is Fail. ErrCode=%v,ErrMessage=%v\n", form.DatastoreExportJobID, res.ErrCode, res.ErrMessage)
 
-		_, err := dseJobStore.FinishExportJob(r.Context(), form.DS2BQJobID, DSExportJobStatusFailed, fmt.Sprintf("Code=%v,MSG=%v,BODY=%+v", res.ErrCode, res.ErrMessage))
+		_, err := dseJobStore.FinishExportJob(r.Context(), form.DS2BQJobID, DSExportJobStatusFailed, fmt.Sprintf("Code=%v,MSG=%v,META=%+v", res.ErrCode, res.ErrMessage, res.Metadata))
 		if err != nil {
 			log.Printf("failed DSExportJobStore.FinishExportJob. DS2BQJobID=%v,err=%v\n", form.DS2BQJobID, err)
 			w.WriteHeader(http.StatusInternalServerError)
