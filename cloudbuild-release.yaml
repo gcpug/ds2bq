@@ -1,9 +1,9 @@
 steps:
-  - name: 'golang:1.11.11-stretch'
+  - name: 'golang:1.11.13-stretch'
     entrypoint: 'go'
     args: ['build', '.']
     env: ['GO111MODULE=on']
-  - name: 'gcr.io/kaniko-project/executor:v0.9.0'
+  - name: 'gcr.io/kaniko-project/executor:v0.10.0'
     args:
       - --destination=gcr.io/$PROJECT_ID/ds2bq:$TAG_NAME
       - --cache=true
