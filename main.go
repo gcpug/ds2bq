@@ -45,8 +45,7 @@ func main() {
 }
 
 func init() {
-	ctx, span := trace.StartSpan(context.Background(), "/init")
-	defer span.End()
+	ctx := context.Background()
 
 	projectID, err := gcpmetadata.GetProjectID()
 	if err != nil {
@@ -72,6 +71,14 @@ func init() {
 		trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 	}
 
+	createClients(ctx)
+}
+
+func createClients(ctx context.Context) {
+	ctx, span := trace.StartSpan(ctx, "CreateClients")
+	defer span.End()
+
+	var err error
 	opts := []option.ClientOption{
 		option.WithGRPCDialOption(grpc.WithDefaultCallOptions(grpc.WaitForReady(true))),
 	}
