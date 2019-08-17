@@ -31,15 +31,15 @@ func TestHandleDatastoreExportAPI(t *testing.T) {
 	cases := []struct {
 		name                string
 		form                DatastoreExportRequest
-		wantBQLoadProjectID string
-		wantBQLoadDatasetID string
+		wantBQLoadProjectID []string
+		wantBQLoadDatasetID []string
 	}{
 		{"default value",
 			DatastoreExportRequest{
 				ProjectID:         "gcpug-ds2bq-dev",
 				OutputGCSFilePath: "gs://datastore-export-gcpug-ds2bq-dev",
 				Kinds:             []string{"Hoge"},
-			}, "gcpug-ds2bq-dev", "datastore"},
+			}, []string{"gcpug-ds2bq-dev"}, []string{"datastore"}},
 		{"explicit value",
 			DatastoreExportRequest{
 				ProjectID:         "gcpug-ds2bq-dev",
@@ -47,7 +47,7 @@ func TestHandleDatastoreExportAPI(t *testing.T) {
 				Kinds:             []string{"Hoge"},
 				BQLoadProjectID:   "gcpug-ds2bq-dev",
 				BQLoadDatasetID:   "ds2bqtest",
-			}, "gcpug-ds2bq-dev", "ds2bqtest"},
+			}, []string{"gcpug-ds2bq-dev"}, []string{"ds2bqtest"}},
 	}
 
 	for _, tt := range cases {
@@ -70,28 +70,31 @@ func TestHandleDatastoreExportAPI(t *testing.T) {
 			if err := json.NewDecoder(resp.Body).Decode(&respBody); err != nil {
 				t.Fatal(err)
 			}
-			_, err = dsexportjobStore.Get(ctx, respBody.DS2BQJobID)
-			if err != nil {
-				if err == mds.ErrNoSuchEntity {
-					t.Errorf("DSExportjobStore ErrNoSuchEntity JobID=%s", respBody.DS2BQJobID)
-					return
+			for i, v := range respBody.IDs {
+				_, err = dsexportjobStore.Get(ctx, v.DS2BQJobID)
+				if err != nil {
+					if err == mds.ErrNoSuchEntity {
+						t.Errorf("DSExportjobStore ErrNoSuchEntity JobID=%s", v.DS2BQJobID)
+						return
+					}
+					t.Fatal(err)
 				}
-				t.Fatal(err)
-			}
-			job, err := bqLoadJobStore.Get(ctx, respBody.DS2BQJobID, "Hoge")
-			if err != nil {
-				if err == mds.ErrNoSuchEntity {
-					t.Errorf("BQLoadJobStore ErrNoSuchEntity JobID=%s,Kind=%s", respBody.DS2BQJobID, "Hoge")
-					return
+				job, err := bqLoadJobStore.Get(ctx, v.DS2BQJobID, "Hoge")
+				if err != nil {
+					if err == mds.ErrNoSuchEntity {
+						t.Errorf("BQLoadJobStore ErrNoSuchEntity JobID=%s,Kind=%s", v.DS2BQJobID, "Hoge")
+						return
+					}
+					t.Fatal(err)
 				}
-				t.Fatal(err)
+				if e, g := tt.wantBQLoadProjectID[i], job.BQLoadProjectID; e != g {
+					t.Errorf("want BQLoadProjectID %s but got %s", e, g)
+				}
+				if e, g := tt.wantBQLoadDatasetID[i], job.BQLoadDatasetID; e != g {
+					t.Errorf("want BQLoadDatasetID %s but got %s", e, g)
+				}
 			}
-			if e, g := tt.wantBQLoadProjectID, job.BQLoadProjectID; e != g {
-				t.Errorf("want BQLoadProjectID %s but got %s", e, g)
-			}
-			if e, g := tt.wantBQLoadDatasetID, job.BQLoadDatasetID; e != g {
-				t.Errorf("want BQLoadDatasetID %s but got %s", e, g)
-			}
+
 		})
 	}
 }

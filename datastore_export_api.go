@@ -25,6 +25,10 @@ type DatastoreExportRequest struct {
 }
 
 type DatastoreExportResponse struct {
+	IDs []*DS2BQJobIDWithDatastoreExportJobID `json:"ids"`
+}
+
+type DS2BQJobIDWithDatastoreExportJobID struct {
 	DS2BQJobID           string `json:"ds2bqJobId"`
 	DatastoreExportJobID string `json:"datastoreExportJobId"`
 }
@@ -118,10 +122,15 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	res := &DatastoreExportResponse{
+		[]*DS2BQJobIDWithDatastoreExportJobID{},
+	}
 	for _, ef := range efs {
+		var dsExportJobID string
 		ds2bqJobID := dsexportJobStore.NewDS2BQJobID(r.Context())
 		bqLoadKinds := BuildBQLoadKinds(ef, form.IgnoreBQLoadKinds)
-		if err := CreateDatastoreExportJob(r.Context(), dsexportJobStore, bqloadJobStore, queue, ds2bqJobID, string(body), form, bqLoadKinds, ef); err != nil {
+		dsExportJobID, err := CreateDatastoreExportJob(r.Context(), dsexportJobStore, bqloadJobStore, queue, ds2bqJobID, string(body), form, bqLoadKinds, ef)
+		if err != nil {
 			msg := fmt.Sprintf("failed CreateDatastoreExportJob ds2bqJobID=%v.err=%+v", ds2bqJobID, err)
 			log.Println(msg)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -131,46 +140,54 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
+		res.IDs = append(res.IDs, &DS2BQJobIDWithDatastoreExportJobID{
+			DS2BQJobID:           ds2bqJobID,
+			DatastoreExportJobID: dsExportJobID,
+		})
 	}
 
 	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(res)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
-func CreateDatastoreExportJob(ctx context.Context, dsexportJobStore *DSExportJobStore, bqloadJobStore *BQLoadJobStore, queue *JobStatusCheckQueue, ds2bqJobID string, body string, form *DatastoreExportRequest, kinds []string, ef *datastore.EntityFilter) error {
-	_, err := dsexportJobStore.Create(ctx, ds2bqJobID, body)
+func CreateDatastoreExportJob(ctx context.Context, dsexportJobStore *DSExportJobStore, bqloadJobStore *BQLoadJobStore, queue *JobStatusCheckQueue, ds2bqJobID string, body string, form *DatastoreExportRequest, kinds []string, ef *datastore.EntityFilter) (string, error) {
+	_, err := dsexportJobStore.Create(ctx, ds2bqJobID, body, kinds)
 	if err != nil {
-		return fmt.Errorf("failed DSExportJobStore.Create() ds2bqJobID=%v.err=%+v", ds2bqJobID, err)
+		return "", fmt.Errorf("failed DSExportJobStore.Create() ds2bqJobID=%v.err=%+v", ds2bqJobID, err)
 	}
 
 	_, err = bqloadJobStore.PutMulti(ctx, BuildBQLoadJobPutMultiForm(ds2bqJobID, kinds, form))
 	if err != nil {
-		return fmt.Errorf("failed BQLoadJobStore.PutMulti() ds2bqJobID=%v,bqLoadKinds=%+v.err=%+v", ds2bqJobID, kinds, err)
+		return "", fmt.Errorf("failed BQLoadJobStore.PutMulti() ds2bqJobID=%v,bqLoadKinds=%+v.err=%+v", ds2bqJobID, kinds, err)
 	}
 
 	ope, err := datastore.Export(ctx, form.ProjectID, form.OutputGCSFilePath, ef)
 	if err != nil {
-		return fmt.Errorf("failed datastore.Export() form=%+v.err=%+v", form, err)
+		return "", fmt.Errorf("failed datastore.Export() form=%+v.err=%+v", form, err)
 	}
 	switch ope.HTTPStatusCode {
 	case http.StatusOK:
 		log.Printf("%+v", ope)
 
 		if _, err := dsexportJobStore.StartExportJob(ctx, ds2bqJobID, ope.Name); err != nil {
-			return fmt.Errorf("failed DSExportJobStore.StartExportJob. ds2bqJobID=%v,jobName=%s.err=%+v", ds2bqJobID, ope.Name, err)
+			return "", fmt.Errorf("failed DSExportJobStore.StartExportJob. ds2bqJobID=%v,jobName=%s.err=%+v", ds2bqJobID, ope.Name, err)
 		}
 
 		if err := queue.AddTask(ctx, &DatastoreExportJobCheckRequest{
 			DS2BQJobID:           ds2bqJobID,
 			DatastoreExportJobID: ope.Name,
 		}); err != nil {
-			return fmt.Errorf("failed queue.AddTask. jobName=%s.err=%+v", ope.Name, err)
+			return "", fmt.Errorf("failed queue.AddTask. jobName=%s.err=%+v", ope.Name, err)
 		}
-		return nil
+		return ope.Name, nil
 	default:
 		if _, err := dsexportJobStore.FinishExportJob(ctx, ds2bqJobID, DSExportJobStatusFailed, fmt.Sprintf("failed DatastoreExportJob.INSERT(). Code=%v,Message=%v", ope.Error.Code, ope.Error.Message)); err != nil {
-			return fmt.Errorf("failed DSExportJobStore.FinishExportJob. ds2bqJobID=%v.err=%+v", ds2bqJobID, err)
+			return "", fmt.Errorf("failed DSExportJobStore.FinishExportJob. ds2bqJobID=%v.err=%+v", ds2bqJobID, err)
 		}
-		return fmt.Errorf("failed DatastoreExportJob.INSERT(). form=%+v.ope.Error=%+v", form, ope.Error)
+		return "", fmt.Errorf("failed DatastoreExportJob.INSERT(). form=%+v.ope.Error=%+v", form, ope.Error)
 	}
 }
 

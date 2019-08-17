@@ -39,7 +39,7 @@ func TestDSExportJobStore_Lifecycle(t *testing.T) {
 
 	ds2bqJobID := s.NewDS2BQJobID(ctx)
 	{
-		job, err := s.Create(ctx, ds2bqJobID, string(body))
+		job, err := s.Create(ctx, ds2bqJobID, string(body), []string{"PugEvent"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -101,7 +101,7 @@ func TestDSExportJobStore_IncrementJobStatusCheckCount(t *testing.T) {
 	}
 
 	ds2bqJobID := s.NewDS2BQJobID(ctx)
-	_, err = s.Create(ctx, ds2bqJobID, "")
+	_, err = s.Create(ctx, ds2bqJobID, "", []string{})
 	if err != nil {
 		t.Fatal(err)
 	}
