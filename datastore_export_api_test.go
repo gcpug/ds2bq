@@ -14,8 +14,6 @@ import (
 )
 
 func TestHandleDatastoreExportAPI(t *testing.T) {
-	t.SkipNow() // 実際にDatastore APIを実行するので、普段はSkipする
-
 	ctx := context.Background()
 	dsexportjobStore, err := NewDSExportJobStore(ctx, DatastoreClient)
 	if err != nil {
@@ -38,18 +36,18 @@ func TestHandleDatastoreExportAPI(t *testing.T) {
 	}{
 		{"default value",
 			DatastoreExportRequest{
-				ProjectID:         "gcpugjp-dev",
-				OutputGCSFilePath: "gs://datastore-backup-gcpugjp-dev",
-				Kinds:             []string{"PugEvent"},
-			}, "gcpugjp-dev", "datastore"},
+				ProjectID:         "gcpug-ds2bq-dev",
+				OutputGCSFilePath: "gs://datastore-export-gcpug-ds2bq-dev",
+				Kinds:             []string{"Hoge"},
+			}, "gcpug-ds2bq-dev", "datastore"},
 		{"explicit value",
 			DatastoreExportRequest{
-				ProjectID:         "gcpugjp-dev",
-				OutputGCSFilePath: "gs://datastore-backup-gcpugjp-dev",
-				Kinds:             []string{"PugEvent"},
-				BQLoadProjectID:   "gcpugjp",
+				ProjectID:         "gcpug-ds2bq-dev",
+				OutputGCSFilePath: "gs://datastore-export-gcpug-ds2bq-dev",
+				Kinds:             []string{"Hoge"},
+				BQLoadProjectID:   "gcpug-ds2bq-dev",
 				BQLoadDatasetID:   "ds2bqtest",
-			}, "gcpugjp", "ds2bqtest"},
+			}, "gcpug-ds2bq-dev", "ds2bqtest"},
 	}
 
 	for _, tt := range cases {
@@ -80,10 +78,10 @@ func TestHandleDatastoreExportAPI(t *testing.T) {
 				}
 				t.Fatal(err)
 			}
-			job, err := bqLoadJobStore.Get(ctx, respBody.DS2BQJobID, "PugEvent")
+			job, err := bqLoadJobStore.Get(ctx, respBody.DS2BQJobID, "Hoge")
 			if err != nil {
 				if err == mds.ErrNoSuchEntity {
-					t.Errorf("BQLoadJobStore ErrNoSuchEntity JobID=%s,Kind=%s", respBody.DS2BQJobID, "PugEvent")
+					t.Errorf("BQLoadJobStore ErrNoSuchEntity JobID=%s,Kind=%s", respBody.DS2BQJobID, "Hoge")
 					return
 				}
 				t.Fatal(err)
@@ -98,56 +96,106 @@ func TestHandleDatastoreExportAPI(t *testing.T) {
 	}
 }
 
-func TestBuildEntityFilter(t *testing.T) {
-	t.SkipNow() // 実際にDatastore APIを実行するので、普段はSkipする
-
+func TestGetDatastoreKinds(t *testing.T) {
 	cases := []struct {
 		name string
 		form *DatastoreExportRequest
-		want *datastore.EntityFilter
+		want []string
 	}{
-		{"Specified Kinds", &DatastoreExportRequest{
-			ProjectID:         "gcpugjp-dev",
-			Kinds:             []string{"Hoge", "Fuga"},
-			NamespaceIDs:      []string{""},
-			OutputGCSFilePath: "gs://datastore-backup-gcpugjp-dev",
-		}, &datastore.EntityFilter{
-			Kinds:        []string{"Hoge", "Fuga"},
-			NamespaceIds: []string{""},
-		}},
-		{"All Kinds", &DatastoreExportRequest{
-			ProjectID:         "gcpugjp-dev",
-			AllKinds:          true,
-			NamespaceIDs:      []string{""},
-			OutputGCSFilePath: "gs://datastore-backup-gcpugjp-dev",
-		}, &datastore.EntityFilter{
-			Kinds:        []string{"DatastoreSample", "Organization", "PugEvent", "SpannerAccount"},
-			NamespaceIds: []string{""},
-		}},
-		{"Ignore Kinds", &DatastoreExportRequest{
-			ProjectID:         "gcpugjp-dev",
-			AllKinds:          true,
-			IgnoreKinds:       []string{"DatastoreSample"},
-			NamespaceIDs:      []string{""},
-			OutputGCSFilePath: "gs://datastore-backup-gcpugjp-dev",
-		}, &datastore.EntityFilter{
-			Kinds:        []string{"Organization", "PugEvent", "SpannerAccount"},
-			NamespaceIds: []string{""},
-		}},
+		{"Specified Kinds",
+			&DatastoreExportRequest{
+				ProjectID:         "gcpug-ds2bq-dev",
+				Kinds:             []string{"Hoge", "Fuga"},
+				NamespaceIDs:      []string{""},
+				OutputGCSFilePath: "gs://datastore-export-gcpug-ds2bq-dev",
+			},
+			[]string{"Hoge", "Fuga"},
+		},
+		{"All Kinds",
+			&DatastoreExportRequest{
+				ProjectID:         "gcpug-ds2bq-dev",
+				AllKinds:          true,
+				NamespaceIDs:      []string{""},
+				OutputGCSFilePath: "gs://datastore-export-gcpug-ds2bq-dev",
+			},
+			[]string{"BQLoadJob", "DSExportJob", "Fuga", "Hoge", "Moge"},
+		},
+		{"Ignore Kinds",
+			&DatastoreExportRequest{
+				ProjectID:         "gcpug-ds2bq-dev",
+				AllKinds:          true,
+				IgnoreKinds:       []string{"BQLoadJob", "DSExportJob"},
+				NamespaceIDs:      []string{""},
+				OutputGCSFilePath: "gs://datastore-export-gcpug-ds2bq-dev",
+			},
+			[]string{"Fuga", "Hoge", "Moge"},
+		},
 	}
 
 	for _, tt := range cases {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := BuildEntityFilter(context.Background(), tt.form)
+			ctx := context.Background()
+			got, err := GetDatastoreKinds(ctx, tt.form)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if reflect.DeepEqual(tt.want.Kinds, got.Kinds) == false {
-				t.Errorf("want Kinds %v but got %v", tt.want.Kinds, got.Kinds)
+			if e, g := len(tt.want), len(got); e != g {
+				body, err := json.Marshal(got)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Errorf("want Kinds.length %+v but got %+v. got body is %+v", e, g, string(body))
+				return
 			}
-			if reflect.DeepEqual(tt.want.NamespaceIds, got.NamespaceIds) == false {
-				t.Errorf("want NamespaceIds %v but got %v", tt.want.NamespaceIds, got.NamespaceIds)
+			for i := 0; i < len(tt.want); i++ {
+				if reflect.DeepEqual(tt.want[i], got[i]) == false {
+					t.Errorf("want Kinds %+v but got %+v", tt.want[i], got[i])
+				}
+			}
+		})
+	}
+}
+
+func TestBuildEntityFilter(t *testing.T) {
+	cases := []struct {
+		name  string
+		kinds []string
+		want  []*datastore.EntityFilter
+	}{
+		{"hoge",
+			[]string{"K1", "K2", "K3"},
+			[]*datastore.EntityFilter{
+				&datastore.EntityFilter{
+					Kinds: []string{"K1", "K2"},
+				},
+				&datastore.EntityFilter{
+					Kinds: []string{"K3"},
+				},
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			got, err := BuildEntityFilter(ctx, []string{}, tt.kinds, 2)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if e, g := len(tt.want), len(got); e != g {
+				body, err := json.Marshal(got)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Errorf("want EntityFilter.length %+v but got %+v. got body is %+v", e, g, string(body))
+				return
+			}
+			for i := 0; i < len(tt.want); i++ {
+				if reflect.DeepEqual(tt.want[i], got[i]) == false {
+					t.Errorf("want EntityFilter %+v but got %+v", tt.want[i], got[i])
+				}
 			}
 		})
 	}

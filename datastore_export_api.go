@@ -43,7 +43,7 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, err := ioutil.ReadAll(r.Body)
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		msg := fmt.Sprintf("failed ioutil.Read(request.Body).err=%+v", err)
 		log.Println(msg)
@@ -57,7 +57,7 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	form := &DatastoreExportRequest{}
-	if err := json.Unmarshal(b, form); err != nil {
+	if err := json.Unmarshal(body, form); err != nil {
 		msg := fmt.Sprintf("failed json.Unmarshal(request.Body).err=%+v", err)
 		log.Println(msg)
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -69,9 +69,20 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("%s\n", string(b))
+	log.Printf("%s\n", string(body))
 
-	ef, err := BuildEntityFilter(r.Context(), form)
+	kinds, err := GetDatastoreKinds(r.Context(), form)
+	if err != nil {
+		msg := fmt.Sprintf("failed GetDatastoreKinds form=%+v.err=%+v", form, err)
+		log.Println(msg)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err := w.Write([]byte(msg))
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+	efs, err := BuildEntityFilter(r.Context(), form.NamespaceIDs, kinds, 30)
 	if err != nil {
 		msg := fmt.Sprintf("failed BuildEntityFilter form=%+v.err=%+v", form, err)
 		log.Println(msg)
@@ -83,7 +94,6 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bqLoadKinds := BuildBQLoadKinds(ef, form.IgnoreBQLoadKinds)
 	dsexportJobStore, err := NewDSExportJobStore(r.Context(), DatastoreClient)
 	if err != nil {
 		msg := fmt.Sprintf("failed NewDSExportJobStore() form=%+v.err=%+v", form, err)
@@ -108,109 +118,65 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ds2bqJobID := dsexportJobStore.NewDS2BQJobID(r.Context())
-	_, err = dsexportJobStore.Create(r.Context(), ds2bqJobID, string(b))
-	if err != nil {
-		msg := fmt.Sprintf("failed DSExportJobStore.Create() ds2bqJobID=%v.err=%+v", ds2bqJobID, err)
-		log.Println(msg)
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err := w.Write([]byte(msg))
-		if err != nil {
-			log.Println(err)
+	for _, ef := range efs {
+		ds2bqJobID := dsexportJobStore.NewDS2BQJobID(r.Context())
+		bqLoadKinds := BuildBQLoadKinds(ef, form.IgnoreBQLoadKinds)
+		if err := CreateDatastoreExportJob(r.Context(), dsexportJobStore, bqloadJobStore, queue, ds2bqJobID, string(body), form, bqLoadKinds, ef); err != nil {
+			msg := fmt.Sprintf("failed CreateDatastoreExportJob ds2bqJobID=%v.err=%+v", ds2bqJobID, err)
+			log.Println(msg)
+			w.WriteHeader(http.StatusInternalServerError)
+			_, err := w.Write([]byte(msg))
+			if err != nil {
+				log.Println(err)
+			}
+			return
 		}
-		return
 	}
 
-	_, err = bqloadJobStore.PutMulti(r.Context(), BuildBQLoadJobPutMultiForm(ds2bqJobID, bqLoadKinds, form))
+	w.WriteHeader(http.StatusOK)
+}
+
+func CreateDatastoreExportJob(ctx context.Context, dsexportJobStore *DSExportJobStore, bqloadJobStore *BQLoadJobStore, queue *JobStatusCheckQueue, ds2bqJobID string, body string, form *DatastoreExportRequest, kinds []string, ef *datastore.EntityFilter) error {
+	_, err := dsexportJobStore.Create(ctx, ds2bqJobID, body)
 	if err != nil {
-		msg := fmt.Sprintf("failed BQLoadJobStore.PutMulti() ds2bqJobID=%v,bqLoadKinds=%+v.err=%+v", ds2bqJobID, bqLoadKinds, err)
-		log.Println(msg)
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err := w.Write([]byte(msg))
-		if err != nil {
-			log.Println(err)
-		}
-		return
+		return fmt.Errorf("failed DSExportJobStore.Create() ds2bqJobID=%v.err=%+v", ds2bqJobID, err)
 	}
 
-	ope, err := datastore.Export(r.Context(), form.ProjectID, form.OutputGCSFilePath, ef)
+	_, err = bqloadJobStore.PutMulti(ctx, BuildBQLoadJobPutMultiForm(ds2bqJobID, kinds, form))
 	if err != nil {
-		msg := fmt.Sprintf("failed datastore.Export() form=%+v.err=%+v", form, err)
-		log.Println(msg)
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err := w.Write([]byte(msg))
-		if err != nil {
-			log.Println(err)
-		}
-		return
+		return fmt.Errorf("failed BQLoadJobStore.PutMulti() ds2bqJobID=%v,bqLoadKinds=%+v.err=%+v", ds2bqJobID, kinds, err)
+	}
+
+	ope, err := datastore.Export(ctx, form.ProjectID, form.OutputGCSFilePath, ef)
+	if err != nil {
+		return fmt.Errorf("failed datastore.Export() form=%+v.err=%+v", form, err)
 	}
 	switch ope.HTTPStatusCode {
 	case http.StatusOK:
 		log.Printf("%+v", ope)
 
-		if _, err := dsexportJobStore.StartExportJob(r.Context(), ds2bqJobID, ope.Name); err != nil {
-			msg := fmt.Sprintf("failed DSExportJobStore.StartExportJob. ds2bqJobID=%v,jobName=%s.err=%+v", ds2bqJobID, ope.Name, err)
-			log.Println(msg)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			w.WriteHeader(http.StatusInternalServerError)
-			_, err := w.Write([]byte(msg))
-			if err != nil {
-				log.Println(err)
-			}
-			return
+		if _, err := dsexportJobStore.StartExportJob(ctx, ds2bqJobID, ope.Name); err != nil {
+			return fmt.Errorf("failed DSExportJobStore.StartExportJob. ds2bqJobID=%v,jobName=%s.err=%+v", ds2bqJobID, ope.Name, err)
 		}
 
-		if err := queue.AddTask(r.Context(), &DatastoreExportJobCheckRequest{
+		if err := queue.AddTask(ctx, &DatastoreExportJobCheckRequest{
 			DS2BQJobID:           ds2bqJobID,
 			DatastoreExportJobID: ope.Name,
 		}); err != nil {
-			msg := fmt.Sprintf("failed queue.AddTask. jobName=%s.err=%+v", ope.Name, err)
-			log.Println(msg)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			w.WriteHeader(http.StatusInternalServerError)
-			_, err := w.Write([]byte(msg))
-			if err != nil {
-				log.Println(err)
-			}
-			return
+			return fmt.Errorf("failed queue.AddTask. jobName=%s.err=%+v", ope.Name, err)
 		}
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(ope.HTTPStatusCode)
-		res := DatastoreExportResponse{
-			DS2BQJobID:           ds2bqJobID,
-			DatastoreExportJobID: ope.Name,
-		}
-		if err := json.NewEncoder(w).Encode(res); err != nil {
-			log.Printf("failed write response. %+v, err=%v", res, err)
-		}
+		return nil
 	default:
-		msg := fmt.Sprintf("failed DatastoreExportJob.INSERT(). form=%+v.ope.Error=%+v", form, ope.Error)
-		log.Println(msg)
-
-		if _, err := dsexportJobStore.FinishExportJob(r.Context(), ds2bqJobID, DSExportJobStatusFailed, fmt.Sprintf("failed DatastoreExportJob.INSERT(). Code=%v,Message=%v", ope.Error.Code, ope.Error.Message)); err != nil {
-			msg := fmt.Sprintf("failed DSExportJobStore.FinishExportJob. ds2bqJobID=%v.err=%+v", ds2bqJobID, err)
-			log.Println(msg)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			w.WriteHeader(http.StatusInternalServerError)
-			_, err := w.Write([]byte(msg))
-			if err != nil {
-				log.Println(err)
-			}
-			return
+		if _, err := dsexportJobStore.FinishExportJob(ctx, ds2bqJobID, DSExportJobStatusFailed, fmt.Sprintf("failed DatastoreExportJob.INSERT(). Code=%v,Message=%v", ope.Error.Code, ope.Error.Message)); err != nil {
+			return fmt.Errorf("failed DSExportJobStore.FinishExportJob. ds2bqJobID=%v.err=%+v", ds2bqJobID, err)
 		}
-		w.WriteHeader(ope.HTTPStatusCode)
-		_, err := w.Write([]byte(msg))
-		if err != nil {
-			log.Println(err)
-		}
-		return
+		return fmt.Errorf("failed DatastoreExportJob.INSERT(). form=%+v.ope.Error=%+v", form, ope.Error)
 	}
 }
 
-func BuildEntityFilter(ctx context.Context, form *DatastoreExportRequest) (*datastore.EntityFilter, error) {
+func GetDatastoreKinds(ctx context.Context, form *DatastoreExportRequest) ([]string, error) {
 	var err error
 	kinds := form.Kinds
-	ns := form.NamespaceIDs
 	if form.AllKinds {
 		kinds, err = datastore.GetAllKinds(ctx, form.ProjectID)
 		if err != nil {
@@ -234,10 +200,27 @@ func BuildEntityFilter(ctx context.Context, form *DatastoreExportRequest) (*data
 		kinds = nks
 	}
 
-	return &datastore.EntityFilter{
-		Kinds:        kinds,
-		NamespaceIds: ns,
-	}, nil
+	return kinds, nil
+}
+
+func BuildEntityFilter(ctx context.Context, namespaceIDs []string, kinds []string, size int) ([]*datastore.EntityFilter, error) {
+	work := kinds
+	var result []*datastore.EntityFilter
+	for {
+		if len(work) < 1 {
+			break
+		}
+		end := size
+		if len(work) <= end {
+			end = len(work)
+		}
+		result = append(result, &datastore.EntityFilter{
+			Kinds:        work[:end],
+			NamespaceIds: namespaceIDs,
+		})
+		work = work[end:]
+	}
+	return result, nil
 }
 
 func BuildBQLoadKinds(ef *datastore.EntityFilter, ignoreKinds []string) []string {
