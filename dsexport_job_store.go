@@ -33,7 +33,8 @@ const (
 type DSExportJob struct {
 	ID                      string `datastore:"-"`
 	DSExportJobID           string
-	JobRequestBody          string `datastore:",noindex"`
+	JobRequestBody          string   `datastore:",noindex"`
+	ExportKinds             []string `datastore:",noindex"`
 	StatusCheckCount        int
 	Status                  DSExportJobStatus
 	ChangeStatusAt          time.Time
@@ -84,11 +85,12 @@ func (store *DSExportJobStore) NewKey(ctx context.Context, ds2bqJobID string) da
 	return store.ds.NameKey("DSExportJob", ds2bqJobID, nil)
 }
 
-func (store *DSExportJobStore) Create(ctx context.Context, ds2bqJobID string, body string) (*DSExportJob, error) {
+func (store *DSExportJobStore) Create(ctx context.Context, ds2bqJobID string, body string, kinds []string) (*DSExportJob, error) {
 	e := DSExportJob{
 		ID:             ds2bqJobID,
 		Status:         DSExportJobStatusDefault,
 		JobRequestBody: body,
+		ExportKinds:    kinds,
 		ChangeStatusAt: time.Now(),
 	}
 	_, err := store.ds.Put(ctx, store.NewKey(ctx, ds2bqJobID), &e)
