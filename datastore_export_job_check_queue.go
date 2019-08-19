@@ -17,14 +17,14 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type JobStatusCheckQueue struct {
+type DatastoreExportJobCheckQueue struct {
 	queueName string
 	targetURL string
 	tasks     *cloudtasks.Client
 }
 
-func NewJobStatusCheckQueue(host string, tasks *cloudtasks.Client) (*JobStatusCheckQueue, error) {
-	qn := os.Getenv("JOB_STATUS_CHECK_QUEUE_NAME")
+func NewDatastoreExportJobCheckQueue(host string, tasks *cloudtasks.Client) (*DatastoreExportJobCheckQueue, error) {
+	qn := os.Getenv("DATASTORE_EXPORT_JOB_CHECK_QUEUE_NAME")
 	if len(qn) < 1 {
 		region, err := gcpmetadata.GetLocation()
 		if err != nil {
@@ -34,15 +34,19 @@ func NewJobStatusCheckQueue(host string, tasks *cloudtasks.Client) (*JobStatusCh
 		qn = fmt.Sprintf("projects/%s/locations/%s/queues/gcpug-ds2bq-datastore-job-check", ProjectID, region)
 	}
 
-	return &JobStatusCheckQueue{
+	return &DatastoreExportJobCheckQueue{
 		tasks:     tasks,
 		queueName: qn,
 		targetURL: fmt.Sprintf("https://%s/api/v1/datastore-export-job-check/", host),
 	}, nil
 }
 
-func (q *JobStatusCheckQueue) AddTask(ctx context.Context, body *DatastoreExportJobCheckRequest) error {
-	ctx, span := trace.StartSpan(ctx, "JobStatusCheckQueue.AddTask")
+func (q *DatastoreExportJobCheckQueue) AddTask(ctx context.Context, body *DatastoreExportJobCheckRequest) error {
+	// TODO いずれはMockを作ったりしたい
+	if !gcpmetadata.OnGCP() {
+		return nil
+	}
+	ctx, span := trace.StartSpan(ctx, "DatastoreExportJobCheckQueue.AddTask")
 	defer span.End()
 
 	message, err := json.Marshal(body)
