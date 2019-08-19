@@ -25,8 +25,6 @@ gcloud beta run deploy gcpug-ds2bq --image=gcr.io/gcpug-container/ds2bq:v0.1.1 -
 
 gcloud beta tasks queues create gcpug-ds2bq-datastore-job-check --max-concurrent-dispatches=1 --max-dispatches-per-second=1 --min-backoff=300s 
 
-gcloud beta run services update gcpug-ds2bq --set-env-vars=JOB_STATUS_CHECK_QUEUE_NAME=projects/$DS2BQ_PROJECT_ID/locations/asia-northeast1/queues/gcpug-ds2bq-datastore-job-check
-
 gcloud iam service-accounts create scheduler --display-name scheduler
 
 gcloud beta run services add-iam-policy-binding gcpug-ds2bq --member serviceAccount:scheduler@$DS2BQ_PROJECT_ID.iam.gserviceaccount.com --role roles/run.invoker
