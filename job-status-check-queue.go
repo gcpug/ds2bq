@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go.opencensus.io/trace"
 	"log"
 	"os"
 
 	"cloud.google.com/go/cloudtasks/apiv2beta3"
 	"github.com/morikuni/failure"
+	"github.com/sinmetal/gcpmetadata"
+	"go.opencensus.io/trace"
 	taskspb "google.golang.org/genproto/googleapis/cloud/tasks/v2beta3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -23,10 +24,14 @@ type JobStatusCheckQueue struct {
 }
 
 func NewJobStatusCheckQueue(host string, tasks *cloudtasks.Client) (*JobStatusCheckQueue, error) {
-	// TODO Cloud RunのTokyo Regionが来たら、Runと同じProject, Locationにあるという前提にしてしまってもいいかも
 	qn := os.Getenv("JOB_STATUS_CHECK_QUEUE_NAME")
 	if len(qn) < 1 {
-		return nil, errors.New("required JOB_STATUS_CHECK_QUEUE_NAME variable")
+		region, err := gcpmetadata.GetLocation()
+		if err != nil {
+			return nil, errors.New("failed get instance location")
+		}
+
+		qn = fmt.Sprintf("projects/%s/locations/%s/queues/gcpug-ds2bq-datastore-job-check", ProjectID, region)
 	}
 
 	return &JobStatusCheckQueue{
