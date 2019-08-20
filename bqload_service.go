@@ -9,12 +9,14 @@ import (
 )
 
 type BQLoadService struct {
-	bqLoadJobStore *BQLoadJobStore
+	bqLoadJobStore      *BQLoadJobStore
+	bqLoadJobCheckQueue *BQLoadJobCheckQueue
 }
 
-func NewBQLoadService(bqLoadJobStore *BQLoadJobStore) *BQLoadService {
+func NewBQLoadService(bqLoadJobStore *BQLoadJobStore, bqLoadJobCheckQueue *BQLoadJobCheckQueue) *BQLoadService {
 	return &BQLoadService{
 		bqLoadJobStore,
+		bqLoadJobCheckQueue,
 	}
 }
 
@@ -39,7 +41,15 @@ func (s *BQLoadService) InsertBigQueryLoadJob(ctx context.Context, ds2bqJobID st
 			return err
 		}
 
-		// TODO BQLoadJobをチェックするTasksを追加する
+		if err := s.bqLoadJobCheckQueue.AddTask(ctx, &BQLoadJobCheckRequest{
+			DS2BQJobID:        ds2bqJobID,
+			BQLoadProjectID:   loadJob.BQLoadProjectID,
+			BQLoadKind:        loadJob.Kind,
+			BigQueryLoadJobID: bqLoadJobId,
+		}); err != nil {
+			log.Printf("failed BQLoadJobCheckQueue.AddTask(). DS2BQJobID=%v,Kind=%v,BigQueryLoadJobID=%v\n", ds2bqJobID, loadJob.Kind, bqLoadJobId)
+			return err
+		}
 	}
 
 	return nil
