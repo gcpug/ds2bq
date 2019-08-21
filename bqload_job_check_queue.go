@@ -26,9 +26,9 @@ type BQLoadJobCheckQueue struct {
 func NewBQLoadJobCheckQueue(host string, tasks *cloudtasks.Client) (*BQLoadJobCheckQueue, error) {
 	qn := os.Getenv("BIGQUERY_LOAD_JOB_CHECK_QUEUE_NAME")
 	if len(qn) < 1 {
-		region, err := gcpmetadata.GetLocation()
+		region, err := gcpmetadata.GetRegion()
 		if err != nil {
-			return nil, errors.New("failed get instance location")
+			return nil, errors.New("failed get instance region")
 		}
 
 		qn = fmt.Sprintf("projects/%s/locations/%s/queues/gcpug-ds2bq-bigquery-load-check", ProjectID, region)

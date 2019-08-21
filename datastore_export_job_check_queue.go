@@ -26,9 +26,9 @@ type DatastoreExportJobCheckQueue struct {
 func NewDatastoreExportJobCheckQueue(host string, tasks *cloudtasks.Client) (*DatastoreExportJobCheckQueue, error) {
 	qn := os.Getenv("DATASTORE_EXPORT_JOB_CHECK_QUEUE_NAME")
 	if len(qn) < 1 {
-		region, err := gcpmetadata.GetLocation()
+		region, err := gcpmetadata.GetRegion()
 		if err != nil {
-			return nil, errors.New("failed get instance location")
+			return nil, errors.New("failed get instance region")
 		}
 		fmt.Printf("Location is %s\n", region)
 
