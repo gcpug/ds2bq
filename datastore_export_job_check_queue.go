@@ -30,6 +30,7 @@ func NewDatastoreExportJobCheckQueue(host string, tasks *cloudtasks.Client) (*Da
 		if err != nil {
 			return nil, errors.New("failed get instance location")
 		}
+		fmt.Printf("Location is %s\n", region)
 
 		qn = fmt.Sprintf("projects/%s/locations/%s/queues/gcpug-ds2bq-datastore-job-check", ProjectID, region)
 	}
