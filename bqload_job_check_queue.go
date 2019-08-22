@@ -33,7 +33,6 @@ func NewBQLoadJobCheckQueue(host string, tasks *cloudtasks.Client) (*BQLoadJobCh
 
 		qn = fmt.Sprintf("projects/%s/locations/%s/queues/gcpug-ds2bq-bigquery-job-check", ProjectID, region)
 	}
-	fmt.Printf("Queue Name is %s\n", qn)
 
 	return &BQLoadJobCheckQueue{
 		tasks:     tasks,
