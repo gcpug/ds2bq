@@ -32,17 +32,19 @@ const (
 
 // +qbg
 type BQLoadJob struct {
-	ID              string `datastore:"-"`
-	JobID           string
-	Kind            string
-	BQLoadProjectID string // BQ Loadする先のGCP ProjectID
-	BQLoadDatasetID string // BQ Loadする先のDatasetID
-	BQLoadJobID     string // BQ Load InsertのJobID
-	Status          BQLoadJobStatus
-	ChangeStatusAt  time.Time
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	SchemaVersion   int
+	ID                    string `datastore:"-"`
+	JobID                 string
+	Kind                  string
+	BQLoadProjectID       string // BQ Loadする先のGCP ProjectID
+	BQLoadDatasetID       string // BQ Loadする先のDatasetID
+	BQLoadJobID           string // BQ Load InsertのJobID
+	StatusCheckCount      int
+	Status                BQLoadJobStatus
+	ChangeStatusAt        time.Time
+	BQLoadResponseMessage string `datastore:",noindex"`
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	SchemaVersion         int
 }
 
 var _ datastore.PropertyLoadSaver = &BQLoadJob{}
@@ -105,10 +107,11 @@ func (store *BQLoadJobStore) Put(ctx context.Context, form *BQLoadJobPutForm) (*
 		BQLoadDatasetID: form.BQLoadDatasetID,
 		ChangeStatusAt:  time.Now(),
 	}
-	_, err := store.ds.Put(ctx, store.NewKey(ctx, e.JobID, e.Kind), &e)
+	key, err := store.ds.Put(ctx, store.NewKey(ctx, e.JobID, e.Kind), &e)
 	if err != nil {
 		return nil, failure.Wrap(err)
 	}
+	e.ID = key.Name()
 	return &e, nil
 }
 
@@ -175,6 +178,54 @@ func (store *BQLoadJobStore) StartLoadJob(ctx context.Context, ds2bqJobID string
 			return nil, err
 		}
 		return nil, failure.Wrap(err, failure.Messagef("failed datastore.RunInTx() ds2bqJobID=%v,kind=%v,bqLoadJobID=%v", ds2bqJobID, kind, bqLoadJobID))
+	}
+	return &e, nil
+}
+
+func (store *BQLoadJobStore) IncrementJobStatusCheckCount(ctx context.Context, ds2bqJobID string, kind string) (*BQLoadJob, error) {
+	key := store.NewKey(ctx, ds2bqJobID, kind)
+	var e BQLoadJob
+	_, err := store.ds.RunInTransaction(ctx, func(tx datastore.Transaction) error {
+		if err := tx.Get(key, &e); err != nil {
+			return err
+		}
+		e.StatusCheckCount++
+		_, err := tx.Put(key, &e)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == datastore.ErrNoSuchEntity {
+			return nil, err
+		}
+		return nil, failure.Wrap(err, failure.Messagef("failed datastore.RunInTx() ds2bqJobID=%v, kind=%v", ds2bqJobID, kind))
+	}
+	return &e, nil
+}
+
+func (store *BQLoadJobStore) FinishExportJob(ctx context.Context, ds2bqJobID string, kind string, status BQLoadJobStatus, message string) (*BQLoadJob, error) {
+	key := store.NewKey(ctx, ds2bqJobID, kind)
+	var e BQLoadJob
+	_, err := store.ds.RunInTransaction(ctx, func(tx datastore.Transaction) error {
+		if err := tx.Get(key, &e); err != nil {
+			return err
+		}
+		e.Status = status
+		e.ChangeStatusAt = time.Now()
+		e.BQLoadResponseMessage = message
+		_, err := tx.Put(key, &e)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == datastore.ErrNoSuchEntity {
+			return nil, err
+		}
+		return nil, failure.Wrap(err, failure.Messagef("failed datastore.RunInTx() ds2bqJobID=%v, kind=%v", ds2bqJobID, kind))
 	}
 	return &e, nil
 }

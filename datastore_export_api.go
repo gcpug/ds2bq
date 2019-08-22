@@ -34,9 +34,9 @@ type DS2BQJobIDWithDatastoreExportJobID struct {
 }
 
 func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
-	queue, err := NewJobStatusCheckQueue(r.Host, TasksClient)
+	queue, err := NewDatastoreExportJobCheckQueue(r.Host, TasksClient)
 	if err != nil {
-		msg := fmt.Sprintf("failed NewJobStatusCheckQueue.err=%+v", err)
+		msg := fmt.Sprintf("failed NewDatastoreExportJobCheckQueue.err=%+v", err)
 		log.Println(msg)
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusBadRequest)
@@ -153,7 +153,7 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CreateDatastoreExportJob(ctx context.Context, dsexportJobStore *DSExportJobStore, bqloadJobStore *BQLoadJobStore, queue *JobStatusCheckQueue, ds2bqJobID string, body string, form *DatastoreExportRequest, kinds []string, ef *datastore.EntityFilter) (string, error) {
+func CreateDatastoreExportJob(ctx context.Context, dsexportJobStore *DSExportJobStore, bqloadJobStore *BQLoadJobStore, queue *DatastoreExportJobCheckQueue, ds2bqJobID string, body string, form *DatastoreExportRequest, kinds []string, ef *datastore.EntityFilter) (string, error) {
 	_, err := dsexportJobStore.Create(ctx, ds2bqJobID, body, kinds)
 	if err != nil {
 		return "", fmt.Errorf("failed DSExportJobStore.Create() ds2bqJobID=%v.err=%+v", ds2bqJobID, err)

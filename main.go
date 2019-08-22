@@ -27,6 +27,7 @@ var DatastoreClient datastore.Client
 
 func main() {
 	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/bigquery-load-job-check/", HandleBQLoadJobCheckAPI)
 	mux.HandleFunc("/api/v1/datastore-export-job-check/", HandleDatastoreExportJobCheckAPI)
 	mux.HandleFunc("/api/v1/datastore-export/", HandleDatastoreExportAPI)
 	mux.HandleFunc("/", HandleHealthCheck)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -64,7 +65,11 @@ func TestHandleDatastoreExportAPI(t *testing.T) {
 				t.Fatal(err)
 			}
 			if e, g := http.StatusOK, resp.StatusCode; e != g {
-				t.Errorf("StatusCode expected %v; got %v", e, g)
+				body, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Errorf("StatusCode expected %v but got %v. body=%v", e, g, string(body))
 			}
 			var respBody DatastoreExportResponse
 			if err := json.NewDecoder(resp.Body).Decode(&respBody); err != nil {
@@ -196,7 +201,7 @@ func TestBuildEntityFilter(t *testing.T) {
 				return
 			}
 			for i := 0; i < len(tt.want); i++ {
-				if reflect.DeepEqual(tt.want[i], got[i]) == false {
+				if !reflect.DeepEqual(tt.want[i].Kinds, got[i].Kinds) {
 					t.Errorf("want EntityFilter %+v but got %+v", tt.want[i], got[i])
 				}
 			}

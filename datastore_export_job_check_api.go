@@ -12,8 +12,6 @@ import (
 	"github.com/morikuni/failure"
 )
 
-var ErrTimeout failure.StringCode = "Timeout"
-
 type DatastoreExportJobCheckRequest struct {
 	DS2BQJobID           string
 	DatastoreExportJobID string
@@ -53,7 +51,7 @@ func HandleDatastoreExportJobCheckAPI(w http.ResponseWriter, r *http.Request) {
 		msg := fmt.Sprintf("failed NewDSExportJobStore.err=%+v", err)
 		log.Println(msg)
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		_, err := w.Write([]byte(msg))
 		if err != nil {
 			log.Println(err)
@@ -66,7 +64,7 @@ func HandleDatastoreExportJobCheckAPI(w http.ResponseWriter, r *http.Request) {
 		msg := fmt.Sprintf("failed datastore.CheckJobStatus.err=%+v", err)
 		log.Println(msg)
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		_, err := w.Write([]byte(msg))
 		if err != nil {
 			log.Println(err)
@@ -104,7 +102,7 @@ func HandleDatastoreExportJobCheckAPI(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := InsertBQLoadJobs(r.Context(), form.DS2BQJobID, res.Metadata.OutputURLPrefix); err != nil {
+		if err := InsertBQLoadJobs(r.Context(), form.DS2BQJobID, res.Metadata.OutputURLPrefix, r.Host); err != nil {
 			log.Printf("failed InsertBQLoadJobs. DS2BQJobID=%v,err=%v\n", form.DS2BQJobID, err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -116,12 +114,16 @@ func HandleDatastoreExportJobCheckAPI(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func InsertBQLoadJobs(ctx context.Context, ds2bqJobID string, outputURLPrefix string) error {
+func InsertBQLoadJobs(ctx context.Context, ds2bqJobID string, outputURLPrefix string, host string) error {
 	bljs, err := NewBQLoadJobStore(ctx, DatastoreClient)
 	if err != nil {
 		return failure.Wrap(err, failure.Message("failed NewBQLoadJobStore"))
 	}
-	ls := NewBQLoadService(bljs)
+	q, err := NewBQLoadJobCheckQueue(host, TasksClient)
+	if err != nil {
+		return failure.Wrap(err, failure.Message("failed NewBQLoadJobCheckQueue"))
+	}
+	ls := NewBQLoadService(bljs, q)
 
 	if err := ls.InsertBigQueryLoadJob(ctx, ds2bqJobID, outputURLPrefix); err != nil {
 		return failure.Wrap(err, failure.Message("failed BQLoadService.InsertBigQueryLoadJob"))

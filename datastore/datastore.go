@@ -143,6 +143,7 @@ func GetAllKinds(ctx context.Context, projectID string) (kinds []string, rerr er
 		if err != nil {
 			return nil, err
 		}
+
 		if strings.HasPrefix(key.Name, "_") {
 			continue
 		}
