@@ -26,3 +26,5 @@ require (
 	google.golang.org/grpc v1.23.0
 	honnef.co/go/tools v0.0.1-2019.2.2 // indirect
 )
+
+replace git.apache.org/thrift.git => github.com/apache/thrift v0.0.0-20190210181146-e53d23c16c80
