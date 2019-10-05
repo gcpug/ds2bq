@@ -24,6 +24,7 @@ type DatastoreExportRequest struct {
 	OutputGCSFilePath string   `json:"outputGCSFilePath"`
 	BQLoadProjectID   string   `json:"bqLoadProjectId"`
 	BQLoadDatasetID   string   `json:"bqLoadDatasetId"`
+	MaxRetryCount     int      `json:"maxRetryCount"`
 }
 
 type DatastoreExportResponse struct {
@@ -124,7 +125,7 @@ func HandleDatastoreExportAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *DatastoreExportAPI) StartDS2BQJob(ctx context.Context, ds2bqJobID string, body string, form *DatastoreExportRequest, namespaceIDs []string, kinds []string, ef *datastore.EntityFilter) (string, error) {
-	_, err := api.DSExportJobStore.Create(ctx, ds2bqJobID, body, form.ProjectID, namespaceIDs, kinds)
+	_, err := api.DSExportJobStore.Create(ctx, ds2bqJobID, body, form.ProjectID, namespaceIDs, kinds, form.MaxRetryCount)
 	if err != nil {
 		return "", fmt.Errorf("failed DSExportJobStore.Create() ds2bqJobID=%v.err=%+v", ds2bqJobID, err)
 	}

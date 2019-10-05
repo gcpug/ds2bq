@@ -40,6 +40,7 @@ type DSExportJob struct {
 	ExportKinds              []string `datastore:",noindex"`
 	StatusCheckCount         int
 	Status                   DSExportJobStatus
+	MaxRetryCount            int
 	RetryCount               int
 	ChangeStatusAt           time.Time
 	DSExportResponseMessages []string `datastore:",noindex"` // DatastoreExportJobID-_-ResponseMessagesが格納される
@@ -89,7 +90,7 @@ func (store *DSExportJobStore) NewKey(ctx context.Context, ds2bqJobID string) da
 	return store.ds.NameKey("DSExportJob", ds2bqJobID, nil)
 }
 
-func (store *DSExportJobStore) Create(ctx context.Context, ds2bqJobID string, body string, exportProjectID string, namespaceIDs []string, kinds []string) (*DSExportJob, error) {
+func (store *DSExportJobStore) Create(ctx context.Context, ds2bqJobID string, body string, exportProjectID string, namespaceIDs []string, kinds []string, maxRetryCount int) (*DSExportJob, error) {
 	e := DSExportJob{
 		ID:                       ds2bqJobID,
 		DSExportJobIDs:           []string{},
@@ -100,6 +101,7 @@ func (store *DSExportJobStore) Create(ctx context.Context, ds2bqJobID string, bo
 		ExportKinds:              kinds,
 		ChangeStatusAt:           time.Now(),
 		DSExportResponseMessages: []string{},
+		MaxRetryCount:            maxRetryCount,
 	}
 	_, err := store.ds.Put(ctx, store.NewKey(ctx, ds2bqJobID), &e)
 	if err != nil {

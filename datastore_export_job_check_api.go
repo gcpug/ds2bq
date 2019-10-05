@@ -120,7 +120,7 @@ func (api *DatastoreExportJobCheckAPI) Check(ctx context.Context, form *Datastor
 			return failure.New(StatusInternalServerError, failure.Messagef("failed DSExportJobStore.Get. DS2BQJobID=%v,err=%v\n", form.DS2BQJobID, err))
 		}
 		job.RetryCount++
-		if job.RetryCount > 3 { // TODO MaxRetryCountを設定できるようにする
+		if job.RetryCount > job.MaxRetryCount {
 			return nil
 		}
 
