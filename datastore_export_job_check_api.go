@@ -136,7 +136,7 @@ func (api *DatastoreExportJobCheckAPI) Check(ctx context.Context, form *Datastor
 		if err := json.Unmarshal([]byte(job.JobRequestBody), &dseForm); err != nil {
 			return failure.New(StatusInternalServerError, failure.Messagef("failed json.Unmarshal.ds2bqJobID=%v,err=%v\n", form.DS2BQJobID, err))
 		}
-		_, err = dseAPI.CreateDatastoreExportJob(ctx, ds2bqJobID, job.ExportProjectID, dseForm.OutputGCSFilePath, efs[0])
+		_, err = dseAPI.CreateDatastoreExportJob(ctx, ds2bqJobID, job.ExportProjectID, dseForm.OutputGCSFilePath, efs[0], job.RetryCount)
 		if err != nil {
 			return failure.New(StatusInternalServerError, failure.Messagef("failed CreateDatastoreExportJob.ds2bqJobID=%v,err=%v\n", form.DS2BQJobID, err))
 		}

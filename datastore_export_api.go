@@ -134,10 +134,10 @@ func (api *DatastoreExportAPI) StartDS2BQJob(ctx context.Context, ds2bqJobID str
 		return "", fmt.Errorf("failed BQLoadJobStore.PutMulti() ds2bqJobID=%v,bqLoadKinds=%+v.err=%+v", ds2bqJobID, kinds, err)
 	}
 
-	return api.CreateDatastoreExportJob(ctx, ds2bqJobID, form.ProjectID, form.OutputGCSFilePath, ef)
+	return api.CreateDatastoreExportJob(ctx, ds2bqJobID, form.ProjectID, form.OutputGCSFilePath, ef, 0)
 }
 
-func (api *DatastoreExportAPI) CreateDatastoreExportJob(ctx context.Context, ds2bqJobID string, projectID string, outputGCSFilePath string, ef *datastore.EntityFilter) (string, error) {
+func (api *DatastoreExportAPI) CreateDatastoreExportJob(ctx context.Context, ds2bqJobID string, projectID string, outputGCSFilePath string, ef *datastore.EntityFilter, retryCount int) (string, error) {
 	ope, err := datastore.Export(ctx, projectID, outputGCSFilePath, ef)
 	if err != nil {
 		return "", fmt.Errorf("failed datastore.Export() err=%+v", err)
@@ -146,7 +146,7 @@ func (api *DatastoreExportAPI) CreateDatastoreExportJob(ctx context.Context, ds2
 	case http.StatusOK:
 		log.Printf("%+v", ope)
 
-		if _, err := api.DSExportJobStore.StartExportJob(ctx, ds2bqJobID, ope.Name, 0); err != nil {
+		if _, err := api.DSExportJobStore.StartExportJob(ctx, ds2bqJobID, ope.Name, retryCount); err != nil {
 			return "", fmt.Errorf("failed DSExportJobStore.StartExportJob. ds2bqJobID=%v,jobName=%s.err=%+v", ds2bqJobID, ope.Name, err)
 		}
 
