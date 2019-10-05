@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -31,17 +32,20 @@ const (
 )
 
 type DSExportJob struct {
-	ID                      string `datastore:"-"`
-	DSExportJobID           string
-	JobRequestBody          string   `datastore:",noindex"`
-	ExportKinds             []string `datastore:",noindex"`
-	StatusCheckCount        int
-	Status                  DSExportJobStatus
-	ChangeStatusAt          time.Time
-	DSExportResponseMessage string `datastore:",noindex"`
-	CreatedAt               time.Time
-	UpdatedAt               time.Time
-	SchemaVersion           int
+	ID                       string `datastore:"-"`
+	DSExportJobIDs           []string
+	JobRequestBody           string `datastore:",noindex"`
+	ExportProjectID          string
+	ExportNamespaceIDs       []string `datastore:",noindex"`
+	ExportKinds              []string `datastore:",noindex"`
+	StatusCheckCount         int
+	Status                   DSExportJobStatus
+	RetryCount               int
+	ChangeStatusAt           time.Time
+	DSExportResponseMessages []string `datastore:",noindex"` // DatastoreExportJobID-_-ResponseMessagesが格納される
+	CreatedAt                time.Time
+	UpdatedAt                time.Time
+	SchemaVersion            int
 }
 
 var _ datastore.PropertyLoadSaver = &DSExportJob{}
@@ -70,7 +74,7 @@ func (e *DSExportJob) Save(ctx context.Context) ([]datastore.Property, error) {
 		e.CreatedAt = time.Now()
 	}
 	e.UpdatedAt = time.Now()
-	e.SchemaVersion = 1
+	e.SchemaVersion = 2
 
 	return datastore.SaveStruct(ctx, e)
 }
@@ -85,13 +89,17 @@ func (store *DSExportJobStore) NewKey(ctx context.Context, ds2bqJobID string) da
 	return store.ds.NameKey("DSExportJob", ds2bqJobID, nil)
 }
 
-func (store *DSExportJobStore) Create(ctx context.Context, ds2bqJobID string, body string, kinds []string) (*DSExportJob, error) {
+func (store *DSExportJobStore) Create(ctx context.Context, ds2bqJobID string, body string, exportProjectID string, namespaceIDs []string, kinds []string) (*DSExportJob, error) {
 	e := DSExportJob{
-		ID:             ds2bqJobID,
-		Status:         DSExportJobStatusDefault,
-		JobRequestBody: body,
-		ExportKinds:    kinds,
-		ChangeStatusAt: time.Now(),
+		ID:                       ds2bqJobID,
+		DSExportJobIDs:           []string{},
+		Status:                   DSExportJobStatusDefault,
+		JobRequestBody:           body,
+		ExportProjectID:          exportProjectID,
+		ExportNamespaceIDs:       namespaceIDs,
+		ExportKinds:              kinds,
+		ChangeStatusAt:           time.Now(),
+		DSExportResponseMessages: []string{},
 	}
 	_, err := store.ds.Put(ctx, store.NewKey(ctx, ds2bqJobID), &e)
 	if err != nil {
@@ -112,16 +120,17 @@ func (store *DSExportJobStore) Get(ctx context.Context, ds2bqJobID string) (*DSE
 	return &e, nil
 }
 
-func (store *DSExportJobStore) StartExportJob(ctx context.Context, ds2bqJobID string, dsExportJobID string) (*DSExportJob, error) {
+func (store *DSExportJobStore) StartExportJob(ctx context.Context, ds2bqJobID string, dsExportJobID string, retryCount int) (*DSExportJob, error) {
 	key := store.NewKey(ctx, ds2bqJobID)
 	var e DSExportJob
 	_, err := store.ds.RunInTransaction(ctx, func(tx datastore.Transaction) error {
 		if err := tx.Get(key, &e); err != nil {
 			return err
 		}
-		e.DSExportJobID = dsExportJobID
+		e.DSExportJobIDs = append(e.DSExportJobIDs, dsExportJobID)
 		e.Status = DSExportJobStatusRunning
 		e.ChangeStatusAt = time.Now()
+		e.RetryCount = retryCount
 
 		_, err := tx.Put(key, &e)
 		if err != nil {
@@ -161,7 +170,7 @@ func (store *DSExportJobStore) IncrementJobStatusCheckCount(ctx context.Context,
 	return &e, nil
 }
 
-func (store *DSExportJobStore) FinishExportJob(ctx context.Context, ds2bqJobID string, status DSExportJobStatus, message string) (*DSExportJob, error) {
+func (store *DSExportJobStore) FinishExportJob(ctx context.Context, ds2bqJobID string, status DSExportJobStatus, dsExportJobID string, message string) (*DSExportJob, error) {
 	key := store.NewKey(ctx, ds2bqJobID)
 	var e DSExportJob
 	_, err := store.ds.RunInTransaction(ctx, func(tx datastore.Transaction) error {
@@ -170,7 +179,7 @@ func (store *DSExportJobStore) FinishExportJob(ctx context.Context, ds2bqJobID s
 		}
 		e.Status = status
 		e.ChangeStatusAt = time.Now()
-		e.DSExportResponseMessage = message
+		e.DSExportResponseMessages = append(e.DSExportResponseMessages, fmt.Sprintf("%s-_-%s", dsExportJobID, message))
 		_, err := tx.Put(key, &e)
 		if err != nil {
 			return err
