@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	cds "cloud.google.com/go/datastore"
@@ -39,7 +40,7 @@ func TestDSExportJobStore_Lifecycle(t *testing.T) {
 
 	ds2bqJobID := s.NewDS2BQJobID(ctx)
 	{
-		job, err := s.Create(ctx, ds2bqJobID, string(body), []string{"PugEvent"})
+		job, err := s.Create(ctx, ds2bqJobID, string(body), req.ProjectID, []string{}, []string{"PugEvent"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -52,9 +53,9 @@ func TestDSExportJobStore_Lifecycle(t *testing.T) {
 		}
 	}
 
+	const dsExportJobID = "dummyDatastoreExportJobID"
 	{
-		const dsExportJobID = "dummyDatastoreExportJobID"
-		job, err := s.StartExportJob(ctx, ds2bqJobID, dsExportJobID)
+		job, err := s.StartExportJob(ctx, ds2bqJobID, dsExportJobID, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -62,14 +63,14 @@ func TestDSExportJobStore_Lifecycle(t *testing.T) {
 		if e, g := DSExportJobStatusRunning, job.Status; e != g {
 			t.Fatalf("want Status is %v but got %v", e, g)
 		}
-		if e, g := dsExportJobID, job.DSExportJobID; e != g {
+		if e, g := dsExportJobID, job.DSExportJobIDs[0]; e != g {
 			t.Fatalf("want DSExportJobID is %v but got %v", e, g)
 		}
 	}
 
 	{
 		const msg = "failed operation..."
-		job, err := s.FinishExportJob(ctx, ds2bqJobID, DSExportJobStatusFailed, msg)
+		job, err := s.FinishExportJob(ctx, ds2bqJobID, DSExportJobStatusFailed, dsExportJobID, msg)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -77,7 +78,7 @@ func TestDSExportJobStore_Lifecycle(t *testing.T) {
 		if e, g := DSExportJobStatusFailed, job.Status; e != g {
 			t.Fatalf("want Status is %v but got %v", e, g)
 		}
-		if e, g := msg, job.DSExportResponseMessage; e != g {
+		if e, g := fmt.Sprintf("%s-_-%s", dsExportJobID, msg), job.DSExportResponseMessages[0]; e != g {
 			t.Fatalf("want Message is %v but got %v", e, g)
 		}
 	}
@@ -101,7 +102,7 @@ func TestDSExportJobStore_IncrementJobStatusCheckCount(t *testing.T) {
 	}
 
 	ds2bqJobID := s.NewDS2BQJobID(ctx)
-	_, err = s.Create(ctx, ds2bqJobID, "", []string{})
+	_, err = s.Create(ctx, ds2bqJobID, "", "", []string{}, []string{})
 	if err != nil {
 		t.Fatal(err)
 	}

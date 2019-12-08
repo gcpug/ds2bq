@@ -23,6 +23,10 @@ func TestBQLoadService_InsertBigQueryLoadJob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	bqljcQ, err := NewBQLoadJobCheckQueue("localhost:8080", TasksClient)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	const ds2bqJobID = "helloJob"
 	{
@@ -38,7 +42,7 @@ func TestBQLoadService_InsertBigQueryLoadJob(t *testing.T) {
 		}
 	}
 
-	ls := NewBQLoadService(s)
+	ls := NewBQLoadService(s, bqljcQ)
 	if err := ls.InsertBigQueryLoadJob(ctx, ds2bqJobID, "gs://datastore-backup-gcpugjp-dev/2019-07-25T10:35:08_16520"); err != nil {
 		t.Fatal(err)
 	}

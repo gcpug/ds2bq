@@ -18,6 +18,7 @@ import (
 )
 
 type DatastoreExportJobCheckQueue struct {
+	host      string
 	queueName string
 	targetURL string
 	tasks     *cloudtasks.Client
@@ -36,6 +37,7 @@ func NewDatastoreExportJobCheckQueue(host string, tasks *cloudtasks.Client) (*Da
 	}
 
 	return &DatastoreExportJobCheckQueue{
+		host:      host,
 		tasks:     tasks,
 		queueName: qn,
 		targetURL: fmt.Sprintf("https://%s/api/v1/datastore-export-job-check/", host),
