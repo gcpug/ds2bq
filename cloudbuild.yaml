@@ -9,4 +9,13 @@ steps:
       - --cache=true
       - --cache-ttl=6h
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['beta', 'run', 'deploy', 'gcpug-ds2bq', '--region', 'asia-northeast1', '--platform', 'managed', '--image', 'gcr.io/$PROJECT_ID/gcpug/ds2bq/$BRANCH_NAME:$COMMIT_SHA']
+    args: [
+      'run',
+      'deploy',
+      'gcpug-ds2bq',
+      '--region', 'asia-northeast1',
+      '--platform', 'managed',
+      '--image', 'gcr.io/$PROJECT_ID/gcpug/ds2bq/$BRANCH_NAME:$COMMIT_SHA',
+      '--service-account', 'gcpug-ds2bq@spectra-tokyo.iam.gserviceaccount.com',
+      '--update-env-vars', 'DATASTORE_EXPORT_JOB_CHECK_QUEUE_NAME=projects/spectra-tokyo/locations/asia-northeast1/queues/gcpug-ds2bq-datastore-job-check-queue,BIGQUERY_LOAD_JOB_CHECK_QUEUE_NAME=projects/spectra-tokyo/locations/asia-northeast1/queues/gcpug-ds2bq-bigquery-job-check-queue',
+    ]

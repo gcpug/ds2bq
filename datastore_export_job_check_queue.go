@@ -8,7 +8,7 @@ import (
 	"log"
 	"os"
 
-	"cloud.google.com/go/cloudtasks/apiv2beta3"
+	cloudtasks "cloud.google.com/go/cloudtasks/apiv2beta3"
 	"github.com/morikuni/failure"
 	"github.com/sinmetal/gcpmetadata"
 	"go.opencensus.io/trace"

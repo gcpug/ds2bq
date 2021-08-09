@@ -133,7 +133,8 @@ func GetAllKinds(ctx context.Context, projectID string) (kinds []string, rerr er
 		}
 	}()
 
-	q := cds.NewQuery("__kind__").KeysOnly()
+	//q := cds.NewQuery("__kind__").KeysOnly()
+	q := cds.NewQuery("__kind__").Namespace("re-lation").KeysOnly()
 	t := client.Run(ctx, q)
 	for {
 		key, err := t.Next(nil)

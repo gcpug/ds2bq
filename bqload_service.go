@@ -26,7 +26,8 @@ func (s *BQLoadService) InsertBigQueryLoadJob(ctx context.Context, ds2bqJobID st
 		return err
 	}
 	for _, loadJob := range loadJobs {
-		gcsPath := fmt.Sprintf("%s/all_namespaces/kind_%s/all_namespaces_kind_%s.export_metadata", outputURLPrefix, loadJob.Kind, loadJob.Kind)
+		//gcsPath := fmt.Sprintf("%s/all_namespaces/kind_%s/all_namespaces_kind_%s.export_metadata", outputURLPrefix, loadJob.Kind, loadJob.Kind)
+		gcsPath := fmt.Sprintf("%s/namespace_re-lation/kind_%s/namespace_re-lation_kind_%s.export_metadata", outputURLPrefix, loadJob.Kind, loadJob.Kind)
 
 		bqLoadJobId, err := bigquery.Load(ctx, loadJob.BQLoadProjectID, gcsPath, loadJob.BQLoadDatasetID, loadJob.Kind)
 		if err != nil {
